@@ -1,0 +1,25 @@
+HireNear-Mobile-App/
+│
+├── Mobile/                     <-- REACT NATIVE (EXPO) FRONTEND
+│   ├── src/
+│   │   ├── components/         (Reusable UI: buttons, cards, inputs. e.g., JobCard.js)
+│   │   ├── screens/            (Full app pages. e.g., LoginScreen.js, JobFeed.js)
+│   │   ├── navigation/         (Stack & Tab navigators. e.g., AppNavigator.js)
+│   │   ├── services/           (API Axios calls to the backend. e.g., jobService.js)
+│   │   └── utils/              (Helper logic/math. e.g., distanceCalculator.js)
+│   ├── App.js                  (Main React Native entry point)
+│   └── package.json            (Frontend dependencies)
+│
+├── server/                     <-- NODE.JS + EXPRESS BACKEND
+│   ├── src/
+│   │   ├── config/             (Database connection. e.g., db.js)
+│   │   ├── models/             (MongoDB Mongoose schemas. e.g., JobPost.js, Bid.js)
+│   │   ├── routes/             (Express URL endpoints. e.g., jobRoutes.js)
+│   │   ├── controllers/        (The actual business logic for routes. e.g., jobController.js)
+│   │   ├── middleware/         (JWT Auth and Multer uploads. e.g., auth.js, upload.js)
+│   │   └── utils/              (Backend helpers)
+│   ├── index.js                (Main server entry point)
+│   └── package.json            (Backend dependencies)
+│
+├── .gitignore                 
+└── README.md
