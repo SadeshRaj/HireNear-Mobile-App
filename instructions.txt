@@ -21,5 +21,14 @@ HireNear-Mobile-App/
 │   ├── index.js                (Main server entry point)
 │   └── package.json            (Backend dependencies)
 │
-├── .gitignore                 
+└── admin/                      <-- NEW: React Web Admin Panel
+    ├── src/
+    │   ├── components/         (Reusable UI: Sidebar, Navbar, StatusBadges)
+    │   ├── pages/              (Main views: Dashboard.jsx, UsersTable.jsx, JobsTable.jsx)
+    │   ├── services/           (Axios API calls to your Node server)
+    │   ├── context/            (Global state for the Admin's JWT login session)
+    │   └── utils/              (Format dates, handle data parsing)
+    ├── package.json
+    └── vite.config.js
+├── .gitignore
 └── README.md
