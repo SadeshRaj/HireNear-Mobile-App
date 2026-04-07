@@ -1,0 +1,72 @@
+# =========================
+# Node.js & Dependencies
+# =========================
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+*error.log
+
+# =========================
+# Environment Variables
+# =========================
+# CRITICAL: Never commit these! They hold your MongoDB Atlas URI and JWT Secrets.
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.pem
+
+# =========================
+# Expo / React Native (Frontend)
+# =========================
+.expo/
+dist/
+web-build/
+cache/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# =========================
+# IDEs & Editors
+# =========================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# VS Code (For your team members who might use it)
+.vscode/
+*.code-workspace
+
+# =========================
+# Operating System Files
+# =========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows (For your team members)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# =========================
+# Build & Log Files
+# =========================
+build/
+coverage/
+logs/
+*.log
