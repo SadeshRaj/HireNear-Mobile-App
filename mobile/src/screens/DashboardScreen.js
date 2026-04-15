@@ -1,105 +1,179 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 
-export default function DashboardScreen() {
+const { width } = Dimensions.get('window');
+
+// Premium Placeholder Images for the Carousel
+const CAROUSEL_IMAGES = [
+    { id: '1', uri: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=1000&auto=format&fit=crop' }, // Clean cleaning service
+    { id: '2', uri: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1000&auto=format&fit=crop' }, // Electrical/Handyman
+    { id: '3', uri: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=1000&auto=format&fit=crop' }, // Plumbing/Pipes
+];
+
+export default function DashboardScreen({ navigation }) {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const flatListRef = useRef(null);
+
+    // Auto-playing carousel logic
+    useEffect(() => {
+        const interval = setInterval(() => {
+            let nextIndex = activeIndex + 1;
+            if (nextIndex >= CAROUSEL_IMAGES.length) nextIndex = 0;
+
+            flatListRef.current?.scrollToIndex({
+                index: nextIndex,
+                animated: true,
+            });
+            setActiveIndex(nextIndex);
+        }, 3500); // Shuffles every 3.5 seconds
+
+        return () => clearInterval(interval);
+    }, [activeIndex]);
+
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
-            <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false}>
+        <SafeAreaView className="flex-1 bg-[#F8F9FB]">
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
-                {/* Header Section */}
-                <View className="flex-row justify-between items-center mb-6">
-                    <View>
-                        <Text className="text-gray-500 text-sm font-medium">Location</Text>
-                        <View className="flex-row items-center mt-1">
-                            <Ionicons name="location-sharp" size={18} color="#2563eb" />
-                            <Text className="text-gray-900 text-lg font-bold ml-1">Colombo, LK</Text>
-                            <Ionicons name="chevron-down" size={16} color="#4b5563" className="ml-1" />
+                {/* Top Premium Header - Location & Weather */}
+                <View className="px-5 pt-6 pb-4 flex-row justify-between items-center">
+                    <View className="flex-row items-center bg-white py-2 px-4 rounded-full shadow-sm border border-gray-100">
+                        <View className="bg-emerald-50 p-1.5 rounded-full mr-2">
+                            <Ionicons name="location" size={16} color="#047857" />
+                        </View>
+                        <View>
+                            <Text className="text-gray-400 text-xs font-medium tracking-wider uppercase">Current Location</Text>
+                            <Text className="text-slate-800 text-sm font-bold tracking-tight">Colombo, WP</Text>
                         </View>
                     </View>
-                    <TouchableOpacity className="bg-white p-2 rounded-full shadow-sm">
-                        <Ionicons name="notifications-outline" size={24} color="#1f2937" />
-                        {/* Notification Badge */}
-                        <View className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
-                    </TouchableOpacity>
+
+                    <View className="flex-row items-center gap-3">
+                        {/* Weather Widget */}
+                        <View className="flex-row items-center bg-white py-2 px-3 rounded-full shadow-sm border border-gray-100">
+                            <Feather name="sun" size={18} color="#d97706" />
+                            <Text className="text-slate-700 font-bold ml-2">29°</Text>
+                        </View>
+
+                        <TouchableOpacity
+                            className="bg-white p-2.5 rounded-full shadow-sm border border-gray-100"
+                            onPress={() => navigation.replace('Login')}
+                        >
+                            <Ionicons name="log-out-outline" size={20} color="#64748b" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                {/* Welcome & Search */}
-                <View className="mb-6">
-                    <Text className="text-3xl font-extrabold text-gray-900 mb-1">Need a fix?</Text>
-                    <Text className="text-gray-500 mb-4">Find reliable workers near you instantly.</Text>
+                {/* Greeting & Search */}
+                <View className="px-5 mb-6">
+                    <Text className="text-3xl font-extrabold text-slate-900 tracking-tight mb-1">Premium Services.</Text>
+                    <Text className="text-slate-500 mb-5 font-medium">Find elite professionals near you.</Text>
 
-                    <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
-                        <Ionicons name="search" size={20} color="#9ca3af" />
+                    <View className="flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100">
+                        <Ionicons name="search" size={22} color="#94a3b8" />
                         <TextInput
-                            placeholder="Search for plumbers, electricians..."
-                            className="flex-1 ml-3 text-base text-gray-800"
-                            placeholderTextColor="#9ca3af"
+                            placeholder="Search for a service..."
+                            className="flex-1 ml-3 text-base text-slate-800"
+                            placeholderTextColor="#94a3b8"
                         />
-                        <TouchableOpacity className="bg-blue-600 p-2 rounded-xl">
+                        <TouchableOpacity className="bg-slate-900 p-2.5 rounded-2xl">
                             <Ionicons name="options" size={20} color="white" />
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* Categories Section */}
+                {/* Auto-Playing Image Carousel */}
                 <View className="mb-8">
-                    <View className="flex-row justify-between items-center mb-4">
-                        <Text className="text-xl font-bold text-gray-900">Categories</Text>
+                    <FlatList
+                        ref={flatListRef}
+                        data={CAROUSEL_IMAGES}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(item) => item.id}
+                        onMomentumScrollEnd={(event) => {
+                            const index = Math.round(event.nativeEvent.contentOffset.x / width);
+                            setActiveIndex(index);
+                        }}
+                        renderItem={({ item }) => (
+                            <View style={{ width, paddingHorizontal: 20 }}>
+                                <Image
+                                    source={{ uri: item.uri }}
+                                    className="w-full h-48 rounded-[32px]"
+                                    resizeMode="cover"
+                                />
+                                <View className="absolute inset-0 bg-black/20 rounded-[32px] ml-5" style={{ width: width - 40 }} />
+                            </View>
+                        )}
+                    />
+                    {/* Pagination Dots */}
+                    <View className="flex-row justify-center mt-4 space-x-2">
+                        {CAROUSEL_IMAGES.map((_, index) => (
+                            <View
+                                key={index}
+                                className={`h-2 rounded-full mx-1 ${activeIndex === index ? 'w-6 bg-slate-800' : 'w-2 bg-slate-300'}`}
+                            />
+                        ))}
+                    </View>
+                </View>
+
+                {/* Categories Section - Luxury Muted Colors */}
+                <View className="px-5 mb-8">
+                    <View className="flex-row justify-between items-center mb-5">
+                        <Text className="text-xl font-bold text-slate-900">Expert Services</Text>
                         <TouchableOpacity>
-                            <Text className="text-blue-600 font-medium">See All</Text>
+                            <Text className="text-emerald-700 font-semibold tracking-wide">View All</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View className="flex-row justify-between">
-                        <CategoryCard icon="water-drop" title="Plumbing" color="bg-blue-100" iconColor="#2563eb" />
-                        <CategoryCard icon="electrical-services" title="Electrical" color="bg-yellow-100" iconColor="#d97706" />
-                        <CategoryCard icon="cleaning-services" title="Cleaning" color="bg-green-100" iconColor="#16a34a" />
-                        <CategoryCard icon="handyman" title="Handyman" color="bg-purple-100" iconColor="#9333ea" />
+                        <CategoryCard icon="water-drop" title="Plumbing" bgColor="bg-sky-50" iconColor="#0284c7" />
+                        <CategoryCard icon="electrical-services" title="Electrical" bgColor="bg-amber-50" iconColor="#d97706" />
+                        <CategoryCard icon="cleaning-services" title="Cleaning" bgColor="bg-emerald-50" iconColor="#059669" />
+                        <CategoryCard icon="handyman" title="Repairs" bgColor="bg-indigo-50" iconColor="#4f46e5" />
                     </View>
                 </View>
 
-                {/* Active Bookings / Nearby Workers snippet */}
-                <View className="mb-8">
-                    <Text className="text-xl font-bold text-gray-900 mb-4">Nearby Workers</Text>
+                {/* Nearby Workers snippet */}
+                <View className="px-5 mb-8">
+                    <Text className="text-xl font-bold text-slate-900 mb-5">Top Rated Nearby</Text>
 
-                    <TouchableOpacity className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex-row items-center mb-3">
-                        <View className="w-14 h-14 bg-gray-200 rounded-full items-center justify-center">
-                            {/* Placeholder for Profile Image */}
-                            <Ionicons name="person" size={24} color="#9ca3af" />
+                    <TouchableOpacity className="bg-white rounded-[32px] p-5 shadow-sm border border-gray-100 flex-row items-center mb-4">
+                        <View className="w-16 h-16 bg-slate-100 rounded-full items-center justify-center border-2 border-white shadow-sm">
+                            <Image
+                                source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
+                                className="w-full h-full rounded-full"
+                            />
                         </View>
                         <View className="flex-1 ml-4">
-                            <View className="flex-row justify-between items-center">
-                                <Text className="text-lg font-bold text-gray-900">Kamal Perera</Text>
-                                <View className="flex-row items-center">
-                                    <Ionicons name="star" size={14} color="#fbbf24" />
-                                    <Text className="text-gray-700 font-bold ml-1">4.8</Text>
+                            <View className="flex-row justify-between items-center mb-1">
+                                <Text className="text-lg font-bold text-slate-900">Kamal Perera</Text>
+                                <View className="flex-row items-center bg-amber-50 px-2 py-1 rounded-lg">
+                                    <Ionicons name="star" size={14} color="#d97706" />
+                                    <Text className="text-amber-700 font-bold ml-1 text-xs">4.9</Text>
                                 </View>
                             </View>
-                            <Text className="text-gray-500 text-sm">Expert Electrician</Text>
+                            <Text className="text-slate-500 text-sm font-medium">Master Electrician</Text>
                             <View className="flex-row items-center mt-2">
-                                <Ionicons name="location" size={14} color="#2563eb" />
-                                <Text className="text-blue-600 text-xs font-bold ml-1">2.5 km away</Text>
+                                <Ionicons name="location" size={14} color="#047857" />
+                                <Text className="text-emerald-700 text-xs font-bold ml-1">2.5 km away</Text>
                             </View>
                         </View>
                     </TouchableOpacity>
-
                 </View>
 
-                {/* Bottom Padding for Scroll */}
                 <View className="h-10" />
             </ScrollView>
         </SafeAreaView>
     );
 }
 
-// Reusable Category Component
-const CategoryCard = ({ icon, title, color, iconColor }) => (
+// Reusable Category Component with softer colors
+const CategoryCard = ({ icon, title, bgColor, iconColor }) => (
     <TouchableOpacity className="items-center">
-        <View className={`w-16 h-16 ${color} rounded-2xl items-center justify-center mb-2`}>
+        <View className={`w-16 h-16 ${bgColor} rounded-[24px] items-center justify-center mb-3 shadow-sm`}>
             <MaterialIcons name={icon} size={28} color={iconColor} />
         </View>
-        <Text className="text-gray-700 text-sm font-medium">{title}</Text>
+        <Text className="text-slate-700 text-xs font-bold tracking-tight">{title}</Text>
     </TouchableOpacity>
 );
