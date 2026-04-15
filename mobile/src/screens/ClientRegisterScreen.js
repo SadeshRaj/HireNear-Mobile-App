@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 export default function ClientRegisterScreen({ navigation }) {
     const [name, setName] = useState('');
@@ -12,15 +13,66 @@ export default function ClientRegisterScreen({ navigation }) {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleRegistration = () => {
-        if (password !== confirmPassword) {
-            setErrorMessage('Passwords do not match. Please try again.');
-            setTimeout(() => setErrorMessage(''), 3000);
+    const handleRegistration = async () => {
+        if (!name || !email || !password) {
+            setErrorMessage('Please fill in all fields');
             return;
         }
-        // Logic for Client Registration
-        navigation.replace('Dashboard');
+
+        if (password !== confirmPassword) {
+            setErrorMessage('Passwords do not match.');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // 1. Get Location
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            let locationData = null;
+
+            if (status === 'granted') {
+                const currentLocation = await Location.getCurrentPositionAsync({});
+                locationData = {
+                    type: "Point",
+                    coordinates: [currentLocation.coords.longitude, currentLocation.coords.latitude]
+                };
+            } else {
+                Alert.alert("Permission Denied", "Location is required for registration.");
+                setLoading(false);
+                return;
+            }
+
+            // 2. API Call
+            const response = await fetch('http://192.168.1.180:5000/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    email,
+                    password,
+                    role: 'Client', // Updated to 'Client'
+                    location: locationData
+                }),
+            });
+
+            // Parse response carefully
+            const data = await response.json();
+
+            if (response.ok) {
+                Alert.alert("Success", "Client account created!");
+                navigation.replace('Dashboard');
+            } else {
+                setErrorMessage(data.msg || 'Registration failed');
+            }
+        } catch (error) {
+            console.error(error);
+            setErrorMessage('Network error. Check server and IP.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -28,27 +80,26 @@ export default function ClientRegisterScreen({ navigation }) {
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
                 <ScrollView className="flex-1 px-8 pt-6" showsVerticalScrollIndicator={false}>
 
-                    {/* Back Button */}
                     <TouchableOpacity onPress={() => navigation.goBack()} className="mb-8 w-12 h-12 bg-white rounded-full items-center justify-center shadow-sm border border-gray-100">
                         <Ionicons name="arrow-back" size={24} color="#0f172a" />
                     </TouchableOpacity>
 
                     <View className="mb-10">
                         <Text className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Join Us.</Text>
-                        <Text className="text-slate-500 text-base font-medium">Experience the best service marketplace.</Text>
+                        <Text className="text-slate-500 text-base font-medium">Register as a Client to hire services.</Text>
                     </View>
 
-                    {/* Navigation Toggle - This is the fix! */}
+                    {/* Simplified Toggle */}
                     <View className="flex-row justify-between mb-8 bg-slate-200/50 p-1.5 rounded-full">
-                        <TouchableOpacity className="flex-1 py-3 rounded-full items-center bg-white shadow-sm">
-                            <Text className="font-bold text-slate-900">Looking to Hire</Text>
-                        </TouchableOpacity>
+                        <View className="flex-1 py-3 rounded-full items-center bg-white shadow-sm">
+                            <Text className="font-bold text-slate-900">I want to Hire</Text>
+                        </View>
 
                         <TouchableOpacity
                             className="flex-1 py-3 rounded-full items-center"
-                            onPress={() => navigation.navigate('WorkerRegister')} // Move to worker screen immediately
+                            onPress={() => navigation.navigate('WorkerRegister')}
                         >
-                            <Text className="font-bold text-slate-500">Offering Services</Text>
+                            <Text className="font-bold text-slate-500">I am a Worker</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -62,29 +113,18 @@ export default function ClientRegisterScreen({ navigation }) {
                     <View className="mb-8">
                         <InputField icon="person-outline" placeholder="Full Name" value={name} onChangeText={setName} />
                         <InputField icon="mail-outline" placeholder="Email address" value={email} onChangeText={setEmail} keyboardType="email-address" />
-
-                        <PasswordField
-                            placeholder="Create password"
-                            value={password}
-                            show={showPassword}
-                            setShow={setShowPassword}
-                            onChangeText={setPassword}
-                        />
-
-                        <PasswordField
-                            placeholder="Verify password"
-                            value={confirmPassword}
-                            show={showConfirmPassword}
-                            setShow={setShowConfirmPassword}
-                            onChangeText={setConfirmPassword}
-                        />
+                        <PasswordField placeholder="Create password" value={password} show={showPassword} setShow={setShowPassword} onChangeText={setPassword} />
+                        <PasswordField placeholder="Verify password" value={confirmPassword} show={showConfirmPassword} setShow={setShowConfirmPassword} onChangeText={setConfirmPassword} />
                     </View>
 
                     <TouchableOpacity
-                        className="bg-slate-900 rounded-3xl py-4 items-center shadow-md mb-12"
+                        className={`bg-slate-900 rounded-3xl py-4 items-center shadow-md mb-12 ${loading ? 'opacity-70' : ''}`}
                         onPress={handleRegistration}
+                        disabled={loading}
                     >
-                        <Text className="text-white font-bold text-lg tracking-wide">Create Account</Text>
+                        <Text className="text-white font-bold text-lg tracking-wide">
+                            {loading ? 'Processing...' : 'Create Client Account'}
+                        </Text>
                     </TouchableOpacity>
 
                 </ScrollView>
@@ -93,7 +133,7 @@ export default function ClientRegisterScreen({ navigation }) {
     );
 }
 
-// Reusable Sub-components to keep the main code clean
+// Sub-components (InputField and PasswordField remain the same as your previous version)
 const InputField = ({ icon, ...props }) => (
     <View className="flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100 mb-5">
         <Ionicons name={icon} size={22} color="#94a3b8" />
