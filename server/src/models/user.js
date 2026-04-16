@@ -1,16 +1,40 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    // Updated enum to your new naming convention
+    name: {
+        type: String,
+        required: true
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    password: {
+        type: String,
+        required: true
+    },
+    // Matches your new requirement for Client and Worker
     role: {
         type: String,
         enum: ['Client', 'Worker'],
         required: true
     },
-
+    // New field for SMS verification
+    phone: {
+        type: String,
+        required: true
+    },
+    // OTP Management
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    otp: {
+        type: String,
+        default: null
+    },
+    // GeoJSON Location
     location: {
         type: {
             type: String,
@@ -22,13 +46,30 @@ const UserSchema = new mongoose.Schema({
             required: true
         }
     },
-
-    phone: { type: String },
-    skills: { type: [String] },
-    bio: { type: String },
+    // Profile & Social Fields
+    profileImage: {
+        type: String,
+        default: ""
+    },
+    skills: {
+        type: [String],
+        default: []
+    },
+    bio: {
+        type: String,
+        default: ""
+    },
+    rating: {
+        type: Number,
+        default: 0
+    },
+    totalReviews: {
+        type: Number,
+        default: 0
+    }
 }, { timestamps: true });
 
-// This index is what makes the location data "searchable" later
+// Essential for nearby searching
 UserSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model('User', UserSchema);

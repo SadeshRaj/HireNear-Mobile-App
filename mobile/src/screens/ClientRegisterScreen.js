@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 export default function ClientRegisterScreen({ navigation }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState(''); // NEW: Phone state
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -16,7 +17,8 @@ export default function ClientRegisterScreen({ navigation }) {
     const [loading, setLoading] = useState(false);
 
     const handleRegistration = async () => {
-        if (!name || !email || !password) {
+        // Updated Validation to include phone
+        if (!name || !email || !phone || !password) {
             setErrorMessage('Please fill in all fields');
             return;
         }
@@ -29,7 +31,6 @@ export default function ClientRegisterScreen({ navigation }) {
         setLoading(true);
 
         try {
-            // 1. Get Location
             let { status } = await Location.requestForegroundPermissionsAsync();
             let locationData = null;
 
@@ -45,25 +46,24 @@ export default function ClientRegisterScreen({ navigation }) {
                 return;
             }
 
-            // 2. API Call
             const response = await fetch('http://192.168.1.180:5000/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name,
                     email,
+                    phone, // NEW: Sending phone to backend
                     password,
-                    role: 'Client', // Updated to 'Client'
+                    role: 'Client',
                     location: locationData
                 }),
             });
 
-            // Parse response carefully
             const data = await response.json();
 
             if (response.ok) {
                 Alert.alert("Success", "Client account created!");
-                navigation.replace('Dashboard');
+                navigation.navigate('VerifyOTP', { phone: phone });
             } else {
                 setErrorMessage(data.msg || 'Registration failed');
             }
@@ -77,8 +77,19 @@ export default function ClientRegisterScreen({ navigation }) {
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-                <ScrollView className="flex-1 px-8 pt-6" showsVerticalScrollIndicator={false}>
+            {/* 1. Improved KeyboardAvoidingView: 'padding' usually works best on iOS, 'height' on Android */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1"
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                <ScrollView
+                    className="flex-1 px-8 pt-6"
+                    showsVerticalScrollIndicator={false}
+                    // 2. THIS IS KEY: Allows you to scroll past the keyboard
+                    contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+                    keyboardShouldPersistTaps="handled"
+                >
 
                     <TouchableOpacity onPress={() => navigation.goBack()} className="mb-8 w-12 h-12 bg-white rounded-full items-center justify-center shadow-sm border border-gray-100">
                         <Ionicons name="arrow-back" size={24} color="#0f172a" />
@@ -89,12 +100,10 @@ export default function ClientRegisterScreen({ navigation }) {
                         <Text className="text-slate-500 text-base font-medium">Register as a Client to hire services.</Text>
                     </View>
 
-                    {/* Simplified Toggle */}
                     <View className="flex-row justify-between mb-8 bg-slate-200/50 p-1.5 rounded-full">
                         <View className="flex-1 py-3 rounded-full items-center bg-white shadow-sm">
                             <Text className="font-bold text-slate-900">I want to Hire</Text>
                         </View>
-
                         <TouchableOpacity
                             className="flex-1 py-3 rounded-full items-center"
                             onPress={() => navigation.navigate('WorkerRegister')}
@@ -113,6 +122,16 @@ export default function ClientRegisterScreen({ navigation }) {
                     <View className="mb-8">
                         <InputField icon="person-outline" placeholder="Full Name" value={name} onChangeText={setName} />
                         <InputField icon="mail-outline" placeholder="Email address" value={email} onChangeText={setEmail} keyboardType="email-address" />
+
+                        {/* NEW: Mobile Number Input */}
+                        <InputField
+                            icon="call-outline"
+                            placeholder="Mobile Number"
+                            value={phone}
+                            onChangeText={setPhone}
+                            keyboardType="phone-pad"
+                        />
+
                         <PasswordField placeholder="Create password" value={password} show={showPassword} setShow={setShowPassword} onChangeText={setPassword} />
                         <PasswordField placeholder="Verify password" value={confirmPassword} show={showConfirmPassword} setShow={setShowConfirmPassword} onChangeText={setConfirmPassword} />
                     </View>
@@ -133,11 +152,15 @@ export default function ClientRegisterScreen({ navigation }) {
     );
 }
 
-// Sub-components (InputField and PasswordField remain the same as your previous version)
+// Sub-components
 const InputField = ({ icon, ...props }) => (
     <View className="flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100 mb-5">
         <Ionicons name={icon} size={22} color="#94a3b8" />
-        <TextInput className="flex-1 ml-3 text-base text-slate-800" placeholderTextColor="#94a3b8" {...props} />
+        <TextInput
+            className="flex-1 ml-3 text-base text-slate-800"
+            placeholderTextColor="#94a3b8"
+            {...props}
+        />
     </View>
 );
 
