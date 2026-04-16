@@ -1,11 +1,52 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // <-- New correct import
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleLogin = async () => {
+        // Basic Validation
+        if (!email || !password) {
+            return Alert.alert("Error", "Please fill in all fields.");
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch('http://192.168.1.180:5000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Login Success!
+                console.log("Login Success User Data:", data.user);
+
+                // You can pass the user data to the dashboard if needed
+                navigation.replace('Dashboard', { user: data.user });
+            } else {
+                // Login Failed (Wrong password, user not found, or not verified)
+                Alert.alert("Login Failed", data.msg || "Invalid credentials.");
+
+                // Logic: If user is not verified, you could redirect them to OTP screen
+                if (data.unverified) {
+                    // Note: You'd need to send the phone number from the backend in the error response
+                    // to make this navigation work perfectly.
+                }
+            }
+        } catch (error) {
+            console.error("Login Error:", error);
+            Alert.alert("Error", "Could not connect to the server.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
@@ -50,10 +91,15 @@ export default function LoginScreen({ navigation }) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    className="bg-slate-900 rounded-3xl py-4 items-center shadow-md mb-8"
-                    onPress={() => navigation.replace('Dashboard')}
+                    className={`bg-slate-900 rounded-3xl py-4 items-center shadow-md mb-8 ${loading ? 'opacity-70' : ''}`}
+                    onPress={handleLogin}
+                    disabled={loading}
                 >
-                    <Text className="text-white font-bold text-lg tracking-wide">Sign In</Text>
+                    {loading ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <Text className="text-white font-bold text-lg tracking-wide">Sign In</Text>
+                    )}
                 </TouchableOpacity>
 
                 <View className="flex-row justify-center mt-4">
