@@ -1,8 +1,10 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors'); // 1. Import CORS
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
+const bidRoutes = require('./src/routes/bidRoutes');
 
 const app = express();
 
@@ -13,8 +15,12 @@ connectDB();
 app.use(cors()); // 2. Enable CORS (Must be before routes)
 app.use(express.json());
 
+// --- STATIC FILES (for bid attachments) ---
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
+app.use('/api/bids', bidRoutes);
 
 const PORT = process.env.PORT || 5000;
 

@@ -51,7 +51,7 @@ export default function LoginScreen({ navigation }) {
 
                 <TouchableOpacity
                     className="bg-slate-900 rounded-3xl py-4 items-center shadow-md mb-8"
-                    onPress={() => navigation.replace('Dashboard')}
+                    onPress={() => navigation.replace('ClientDashboard')}
                 >
                     <Text className="text-white font-bold text-lg tracking-wide">Sign In</Text>
                 </TouchableOpacity>
