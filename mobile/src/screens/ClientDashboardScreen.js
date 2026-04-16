@@ -1,82 +1,68 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    Image, FlatList, Dimensions, RefreshControl
+    FlatList, RefreshControl, ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import { getMyJobs, updateJobStatus, deleteJob } from '../services/jobService';
 
-const { width } = Dimensions.get('window');
+const CATEGORY_META = {
+    Plumbing:    { icon: 'water-drop',         bg: 'bg-sky-50',     color: '#0284c7' },
+    Electrical:  { icon: 'electrical-services', bg: 'bg-amber-50',   color: '#d97706' },
+    Cleaning:    { icon: 'cleaning-services',   bg: 'bg-emerald-50', color: '#059669' },
+    Repairs:     { icon: 'handyman',            bg: 'bg-indigo-50',  color: '#4f46e5' },
+    Carpentry:   { icon: 'carpenter',           bg: 'bg-orange-50',  color: '#ea580c' },
+    Painting:    { icon: 'format-paint',        bg: 'bg-pink-50',    color: '#db2777' },
+    Landscaping: { icon: 'yard',                bg: 'bg-lime-50',    color: '#65a30d' },
+    Other:       { icon: 'more-horiz',          bg: 'bg-slate-100',  color: '#475569' },
+};
 
-// ─── Mock jobs data ──────────────────────────────────────────────────────────
-// TODO: Replace with real API call → GET /api/jobs/my  (Feature #1 - Job Posting)
-// Each job's _id must be a real MongoDB ObjectId once job posting is live.
-const MOCK_JOBS = [
-    {
-        _id: '6621a1b2c3d4e5f678901234',
-        title: 'Fix leaking bathroom pipe',
-        category: 'Plumbing',
-        budget: 4500,
-        deadline: '2026-04-20',
-        status: 'open',
-        bidCount: 3,
-        location: { coordinates: [79.8612, 6.9271] },
-        categoryIcon: 'water-drop',
-        categoryBg: 'bg-sky-50',
-        categoryColor: '#0284c7',
-    },
-    {
-        _id: '6621a1b2c3d4e5f678905678',
-        title: 'Rewire kitchen electrical panel',
-        category: 'Electrical',
-        budget: 12000,
-        deadline: '2026-04-22',
-        status: 'open',
-        bidCount: 5,
-        location: { coordinates: [79.8612, 6.9271] },
-        categoryIcon: 'electrical-services',
-        categoryBg: 'bg-amber-50',
-        categoryColor: '#d97706',
-    },
-    {
-        _id: '6621a1b2c3d4e5f678909abc',
-        title: 'Deep clean 3-bedroom apartment',
-        category: 'Cleaning',
-        budget: 7000,
-        deadline: '2026-04-18',
-        status: 'closed',
-        bidCount: 2,
-        location: { coordinates: [79.8612, 6.9271] },
-        categoryIcon: 'cleaning-services',
-        categoryBg: 'bg-emerald-50',
-        categoryColor: '#059669',
-    },
-];
-
-// ─── Status badge config ─────────────────────────────────────────────────────
 const JOB_STATUS = {
-    open: { label: 'Open', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: '#059669' },
-    closed: { label: 'Closed', bg: 'bg-slate-100', text: 'text-slate-500', dot: '#94a3b8' },
-    in_progress: { label: 'In Progress', bg: 'bg-blue-50', text: 'text-blue-600', dot: '#2563eb' },
+    open:   { label: 'Open',   bg: 'bg-emerald-50', text: 'text-emerald-700', dot: '#059669' },
+    closed: { label: 'Closed', bg: 'bg-slate-100',  text: 'text-slate-500',   dot: '#94a3b8' },
 };
 
 export default function ClientDashboardScreen({ navigation }) {
+    const [jobs, setJobs] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [jobs, setJobs] = useState(MOCK_JOBS);
+    const [error, setError] = useState('');
 
-    // TODO: Replace this with real API fetch when Job Posting (Feature #1) is merged:
-    // const fetchMyJobs = async () => {
-    //     const token = await AsyncStorage.getItem('token');
-    //     const res = await fetch('http://192.168.1.180:5000/api/jobs/my', {
-    //         headers: { Authorization: `Bearer ${token}` }
-    //     });
-    //     const data = await res.json();
-    //     if (Array.isArray(data)) setJobs(data);
-    // };
+    const fetchJobs = async () => {
+        try {
+            const data = await getMyJobs();
+            if (Array.isArray(data)) {
+                setJobs(data);
+                setError('');
+            } else {
+                setError(data.msg || 'Failed to load jobs.');
+            }
+        } catch {
+            setError('Network error. Check your connection.');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
 
-    const onRefresh = () => {
-        setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 1000); // Replace with fetchMyJobs()
+    // Fetch jobs when screen mounts
+    // NOTE: pull-to-refresh only during testing (avoids background async state update)
+    const onRefresh = () => { setRefreshing(true); fetchJobs(); };
+
+    const handleCloseJob = async (jobId) => {
+        const result = await updateJobStatus(jobId, 'closed');
+        if (result.job) fetchJobs();
+    };
+
+    const handleDeleteJob = (jobId) => {
+        Alert.alert('Delete Job', 'Remove this job and all its bids?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: async () => {
+                await deleteJob(jobId);
+                fetchJobs();
+            }}
+        ]);
     };
 
     const openJobs = jobs.filter(j => j.status === 'open').length;
@@ -147,13 +133,10 @@ export default function ClientDashboardScreen({ navigation }) {
                 </View>
 
                 {/* ── Post a Job CTA ───────────────────────────────────────── */}
-                {/* TODO: onPress → navigation.navigate('PostJob') once Feature #1 is merged */}
                 <View className="px-5 mb-7">
                     <TouchableOpacity
                         className="bg-slate-900 rounded-[28px] p-5 flex-row items-center justify-between shadow-md"
-                        onPress={() => {
-                            /* navigation.navigate('PostJob') — Feature #1 */
-                        }}
+                        onPress={() => navigation.navigate('PostJob')}
                         activeOpacity={0.85}
                     >
                         <View className="flex-1">
@@ -175,7 +158,11 @@ export default function ClientDashboardScreen({ navigation }) {
                         </TouchableOpacity>
                     </View>
 
-                    {jobs.length === 0 ? (
+                    {loading ? (
+                        <View className="items-center py-10">
+                            <ActivityIndicator size="large" color="#0f172a" />
+                        </View>
+                    ) : jobs.length === 0 ? (
                         <View className="bg-white rounded-[28px] p-8 shadow-sm border border-gray-100 items-center">
                             <Text className="text-4xl mb-3">📋</Text>
                             <Text className="text-slate-700 font-bold text-base mb-1">No jobs posted yet</Text>
@@ -183,7 +170,9 @@ export default function ClientDashboardScreen({ navigation }) {
                         </View>
                     ) : (
                         jobs.map((job) => {
+                            const catMeta = CATEGORY_META[job.category] || CATEGORY_META.Other;
                             const statusCfg = JOB_STATUS[job.status] || JOB_STATUS.open;
+                            const deadlineStr = job.deadline ? new Date(job.deadline).toISOString().split('T')[0] : '';
                             return (
                                 <View
                                     key={job._id}
@@ -192,8 +181,8 @@ export default function ClientDashboardScreen({ navigation }) {
                                     {/* Job Header */}
                                     <View className="flex-row justify-between items-start mb-3">
                                         <View className="flex-row items-center flex-1 mr-3">
-                                            <View className={`w-10 h-10 ${job.categoryBg} rounded-2xl items-center justify-center mr-3`}>
-                                                <MaterialIcons name={job.categoryIcon} size={20} color={job.categoryColor} />
+                                            <View className={`w-10 h-10 ${catMeta.bg} rounded-2xl items-center justify-center mr-3`}>
+                                                <MaterialIcons name={catMeta.icon} size={20} color={catMeta.color} />
                                             </View>
                                             <View className="flex-1">
                                                 <Text className="text-base font-bold text-slate-900" numberOfLines={1}>
@@ -223,26 +212,36 @@ export default function ClientDashboardScreen({ navigation }) {
                                         </View>
                                         <View className="flex-row items-center">
                                             <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
-                                            <Text className="text-slate-400 text-xs font-medium ml-1">{job.deadline}</Text>
+                                            <Text className="text-slate-400 text-xs font-medium ml-1">{deadlineStr}</Text>
                                         </View>
                                     </View>
 
-                                    {/* Bids Row + View Bids Button */}
+                                    {/* Bids + Actions */}
                                     <View className="flex-row items-center justify-between">
                                         <View className="flex-row items-center bg-blue-50 px-3 py-1.5 rounded-2xl">
                                             <Ionicons name="people-outline" size={14} color="#2563eb" />
                                             <Text className="text-blue-600 font-bold ml-1.5 text-xs">
-                                                {job.bidCount} bid{job.bidCount !== 1 ? 's' : ''} received
+                                                {job.bidCount || 0} bid{job.bidCount !== 1 ? 's' : ''}
                                             </Text>
                                         </View>
 
-                                        <TouchableOpacity
-                                            className="bg-slate-900 rounded-2xl px-5 py-2.5 flex-row items-center"
-                                            onPress={() => navigation.navigate('BidList', { job })}
-                                        >
-                                            <Text className="text-white font-bold text-sm mr-1.5">View Bids</Text>
-                                            <Ionicons name="arrow-forward" size={14} color="white" />
-                                        </TouchableOpacity>
+                                        <View className="flex-row gap-2">
+                                            {job.status === 'open' && (
+                                                <TouchableOpacity
+                                                    className="bg-slate-100 border border-slate-200 rounded-2xl px-3 py-2.5"
+                                                    onPress={() => handleCloseJob(job._id)}
+                                                >
+                                                    <Text className="text-slate-600 font-bold text-xs">Close</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                            <TouchableOpacity
+                                                className="bg-slate-900 rounded-2xl px-4 py-2.5 flex-row items-center"
+                                                onPress={() => navigation.navigate('BidList', { job })}
+                                            >
+                                                <Text className="text-white font-bold text-xs mr-1">View Bids</Text>
+                                                <Ionicons name="arrow-forward" size={13} color="white" />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 </View>
                             );

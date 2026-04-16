@@ -1,10 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const cors = require('cors'); // 1. Import CORS
+const cors = require('cors');
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
 const bidRoutes = require('./src/routes/bidRoutes');
+const jobRoutes = require('./src/routes/jobRoutes');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
 app.use('/api/bids', bidRoutes);
+app.use('/api/jobs', jobRoutes);
 
 const PORT = process.env.PORT || 5000;
 

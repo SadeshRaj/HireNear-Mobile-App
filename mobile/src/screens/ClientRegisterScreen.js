@@ -46,7 +46,7 @@ export default function ClientRegisterScreen({ navigation }) {
             }
 
             // 2. API Call
-            const response = await fetch('http://192.168.1.180:5000/api/auth/register', {
+            const response = await fetch('http://192.168.1.4:3001/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

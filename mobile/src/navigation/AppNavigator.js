@@ -5,6 +5,7 @@ import ClientRegisterScreen from '../screens/ClientRegisterScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import WorkerRegisterScreen from '../screens/WorkerRegisterScreen';
 import ClientDashboardScreen from '../screens/ClientDashboardScreen';
+import PostJobScreen from '../screens/PostJobScreen';
 
 // ── Bidding & Proposal System screens ───────────────────────────────────────
 import SubmitBidScreen from '../screens/SubmitBidScreen';
@@ -31,6 +32,7 @@ export default function AppNavigator() {
 
             {/* ── Client Dashboard (Bidding feature) ─────────────────────── */}
             <Stack.Screen name="ClientDashboard" component={ClientDashboardScreen} />
+            <Stack.Screen name="PostJob" component={PostJobScreen} />
         </Stack.Navigator>
     );
 }
