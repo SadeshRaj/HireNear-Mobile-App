@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, P
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function VerifyOTPScreen({ route, navigation }) {
-    const { phone } = route.params; // Get phone from Register screen
+    const { phone } = route.params;
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -12,19 +12,27 @@ export default function VerifyOTPScreen({ route, navigation }) {
 
         setLoading(true);
         try {
+            console.log(`Sending Verify Request -> Phone: ${phone}, OTP: ${otp}`);
+
             const response = await fetch('http://192.168.1.180:5000/api/auth/verify-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone, otp }),
             });
 
+            // ADDED: Parse the response data from the backend
+            const data = await response.json();
+            console.log("Backend Response:", response.status, data);
+
             if (response.ok) {
                 Alert.alert("Verified!", "Welcome to HireNear.");
-                navigation.replace('Dashboard');
+                navigation.replace('Dashboard'); // Or whatever your home screen is
             } else {
-                Alert.alert("Failed", "Incorrect OTP. Please try again.");
+                // ADDED: Display the real error message from the backend, not a hardcoded one
+                Alert.alert("Failed", data.msg || data.error || "Something went wrong.");
             }
         } catch (error) {
+            console.error("Fetch Error:", error);
             Alert.alert("Error", "Could not connect to server.");
         } finally {
             setLoading(false);

@@ -62,7 +62,6 @@ export default function ClientRegisterScreen({ navigation }) {
             const data = await response.json();
 
             if (response.ok) {
-                Alert.alert("Success", "Client account created!");
                 navigation.navigate('VerifyOTP', { phone: phone });
             } else {
                 setErrorMessage(data.msg || 'Registration failed');
