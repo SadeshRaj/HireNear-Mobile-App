@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { API_BASE_URL } from '../../config'; // ADDED: Import your config
 
 // Pre-defined list of skills
 const PRESET_SKILLS = ["Plumbing", "Electrical", "Carpentry", "Cleaning", "Painting", "AC Repair", "Gardening", "Masonry"];
@@ -55,7 +56,8 @@ export default function WorkerRegisterScreen({ navigation }) {
                 location: { type: 'Point', coordinates: [79.8612, 6.9271] }
             };
 
-            const response = await fetch('http://192.168.1.180:5000/api/auth/register', {
+            // CHANGED: Using dynamic API URL
+            const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(workerData),
