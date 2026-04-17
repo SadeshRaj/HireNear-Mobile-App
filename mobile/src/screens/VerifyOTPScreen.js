@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { API_BASE_URL } from '../../config'; // Import is here!
 
 export default function VerifyOTPScreen({ route, navigation }) {
     const { phone } = route.params;
@@ -14,21 +15,20 @@ export default function VerifyOTPScreen({ route, navigation }) {
         try {
             console.log(`Sending Verify Request -> Phone: ${phone}, OTP: ${otp}`);
 
-            const response = await fetch('http://192.168.1.180:5000/api/auth/verify-otp', {
+            // CHANGED: Using dynamic API URL
+            const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone, otp }),
             });
 
-            // ADDED: Parse the response data from the backend
             const data = await response.json();
             console.log("Backend Response:", response.status, data);
 
             if (response.ok) {
                 Alert.alert("Verified!", "Welcome to HireNear.");
-                navigation.replace('Dashboard'); // Or whatever your home screen is
+                navigation.replace('Dashboard');
             } else {
-                // ADDED: Display the real error message from the backend, not a hardcoded one
                 Alert.alert("Failed", data.msg || data.error || "Something went wrong.");
             }
         } catch (error) {
