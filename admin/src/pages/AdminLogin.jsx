@@ -1,16 +1,45 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock } from 'lucide-react';
+import { API_BASE_URL } from '../utils/config'; // 1. Import your config
 
 export default function AdminLogin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState(''); // Added to handle display errors
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // Add real authentication later
-        navigate('/dashboard');
+        setError('');
+
+        try {
+            // 2. Use the dynamic API_BASE_URL
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Check if the user is an admin (Optional, based on your backend logic)
+                if (data.user && data.user.role === 'Admin') {
+                    console.log("Admin Login Success");
+                    navigate('/dashboard');
+                } else {
+                    setError('Access denied. Admin privileges required.');
+                }
+            } else {
+                setError(data.msg || 'Invalid credentials');
+            }
+        } catch (err) {
+            console.error("Login Error:", err);
+            setError('Could not connect to the server. Check the IP address.');
+        }
     };
 
     return (
@@ -24,6 +53,13 @@ export default function AdminLogin() {
 
                 <h2 className="text-3xl font-extrabold text-slate-900 text-center mb-2 tracking-tight">HireNear Admin</h2>
                 <p className="text-slate-500 text-center mb-8 font-medium">Secure portal access</p>
+
+                {/* 3. Display error messages if they exist */}
+                {error && (
+                    <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-5 text-sm text-center font-medium border border-red-100">
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleLogin} className="space-y-5">
                     <div className="relative">
