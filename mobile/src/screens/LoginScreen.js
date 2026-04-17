@@ -32,6 +32,7 @@ export default function LoginScreen({ navigation }) {
 
                 // You can pass the user data to the dashboard if needed
                 navigation.replace('Dashboard', { user: data.user });
+
             } else {
                 // Login Failed (Wrong password, user not found, or not verified)
                 Alert.alert("Login Failed", data.msg || "Invalid credentials.");

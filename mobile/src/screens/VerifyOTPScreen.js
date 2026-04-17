@@ -28,6 +28,7 @@ export default function VerifyOTPScreen({ route, navigation }) {
             if (response.ok) {
                 Alert.alert("Verified!", "Welcome to HireNear.");
                 navigation.replace('Dashboard');
+                navigation.replace('MainTabs', { user: data.user });
             } else {
                 Alert.alert("Failed", data.msg || data.error || "Something went wrong.");
             }
