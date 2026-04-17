@@ -11,4 +11,9 @@ const upload = multer({ storage: storage });
 // 'images' is the name of the field we will send from Frontend
 router.post('/create', upload.array('images', 5), jobController.createJobPost);
 
+// routes/jobRoutes.js
+router.get('/my-jobs/:userId', jobController.getMyJobs);
+
+
+
 module.exports = router;

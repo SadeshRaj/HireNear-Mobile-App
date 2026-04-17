@@ -45,3 +45,15 @@ exports.createJobPost = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+// controllers/jobController.js
+exports.getMyJobs = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        // We find all jobs where clientId matches the logged-in user
+        const jobs = await JobPost.find({ clientId: userId }).sort({ createdAt: -1 });
+        res.status(200).json({ success: true, jobs });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error fetching jobs" });
+    }
+};
