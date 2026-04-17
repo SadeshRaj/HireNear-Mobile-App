@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingVi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { API_BASE_URL } from '../../config'; // ADD THIS IMPORT
 
 export default function ClientRegisterScreen({ navigation }) {
     const [name, setName] = useState('');
@@ -46,20 +47,35 @@ export default function ClientRegisterScreen({ navigation }) {
                 return;
             }
 
-            const response = await fetch('http://192.168.1.180:5000/api/auth/register', {
+            // REPLACE the hardcoded URL with API_BASE_URL
+            const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name,
                     email,
-                    phone, // NEW: Sending phone to backend
+                    phone,
                     password,
                     role: 'Client',
                     location: locationData
                 }),
             });
 
-            const data = await response.json();
+            // --- ADDED DEBUGGING LOGIC ---
+            const rawText = await response.text();
+            console.log("RAW RESPONSE STATUS:", response.status);
+            console.log("RAW RESPONSE TEXT:", rawText);
+
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (parseError) {
+                console.error("JSON Parse Error. The server did not return JSON.");
+                setErrorMessage(`Server Error (Status: ${response.status})`);
+                setLoading(false);
+                return;
+            }
+            // --- END DEBUGGING LOGIC ---
 
             if (response.ok) {
                 navigation.navigate('VerifyOTP', { phone: phone });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { API_BASE_URL } from '../../config'; // ADD THIS IMPORT
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
@@ -16,7 +17,8 @@ export default function LoginScreen({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.1.180:5000/api/auth/login', {
+            // REPLACE the hardcoded URL with API_BASE_URL
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
