@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
@@ -12,11 +13,6 @@ export default function LoginScreen({ navigation }) {
     const [error, setError] = useState('');
 
     const handleLogin = async () => {
-        // DEV BYPASS: skip login if no credentials entered
-        if (!email && !password) {
-            navigation.replace('ClientDashboard');
-            return;
-        }
         if (!email || !password) {
             setError('Please enter your email and password.');
             return;
@@ -24,15 +20,16 @@ export default function LoginScreen({ navigation }) {
         setError('');
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.1.4:3001/api/auth/login', {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
+
             const data = await response.json();
 
             if (response.ok) {
-                // Store token and user info
+                // Store token and user info for protected API calls
                 await AsyncStorage.setItem('token', data.token);
                 await AsyncStorage.setItem('user', JSON.stringify(data.user));
 
@@ -44,6 +41,15 @@ export default function LoginScreen({ navigation }) {
                 }
             } else {
                 setError(data.msg || 'Login failed. Check your credentials.');
+
+                // Redirect unverified users back to OTP screen
+                if (data.unverified) {
+                    Alert.alert(
+                        'Not Verified',
+                        'Your account is not verified. Please complete phone verification.',
+                        [{ text: 'OK' }]
+                    );
+                }
             }
         } catch {
             setError('Network error. Make sure the server is running.');

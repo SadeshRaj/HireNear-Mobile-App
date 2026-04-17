@@ -4,31 +4,30 @@ const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    // Updated enum to your new naming convention
-    role: {
-        type: String,
-        enum: ['Client', 'Worker'],
-        required: true
+    role: { type: String, enum: ['Client', 'Worker'], required: true },
+    phone: { type: String, required: true },
+    isVerified: { type: Boolean, default: false },
+    otp: { type: String, default: null },
+
+    // This field controls the auto-deletion
+    // It will automatically delete the document 300 seconds (5 mins) after the date in this field
+    expireAt: {
+        type: Date,
+        default: null,
+        index: { expires: 300 }
     },
 
     location: {
-        type: {
-            type: String,
-            enum: ['Point'],
-            default: 'Point'
-        },
-        coordinates: {
-            type: [Number], // [longitude, latitude]
-            required: true
-        }
+        type: { type: String, enum: ['Point'], default: 'Point' },
+        coordinates: { type: [Number], required: true }
     },
-
-    phone: { type: String },
-    skills: { type: [String] },
-    bio: { type: String },
+    profileImage: { type: String, default: "" },
+    skills: { type: [String], default: [] },
+    bio: { type: String, default: "" },
+    rating: { type: Number, default: 0 },
+    totalReviews: { type: Number, default: 0 }
 }, { timestamps: true });
 
-// This index is what makes the location data "searchable" later
 UserSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model('User', UserSchema);

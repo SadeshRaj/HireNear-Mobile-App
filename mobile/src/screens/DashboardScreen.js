@@ -12,9 +12,14 @@ const CAROUSEL_IMAGES = [
     { id: '3', uri: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=1000&auto=format&fit=crop' }, // Plumbing/Pipes
 ];
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen({ navigation, route }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const flatListRef = useRef(null);
+
+    // Extract the user's first name from the route params (passed from LoginScreen)
+    // If no user is passed, it defaults to 'Guest'
+    const user = route?.params?.user;
+    const firstName = user?.name ? user.name.split(' ')[0] : 'Guest';
 
     // Auto-playing carousel logic
     useEffect(() => {
@@ -66,7 +71,7 @@ export default function DashboardScreen({ navigation }) {
 
                 {/* Greeting & Search */}
                 <View className="px-5 mb-6">
-                    <Text className="text-3xl font-extrabold text-slate-900 tracking-tight mb-1">Premium Services.</Text>
+                    <Text className="text-3xl font-extrabold text-slate-900 tracking-tight mb-1">Hello, {firstName} </Text>
                     <Text className="text-slate-500 mb-5 font-medium">Find elite professionals near you.</Text>
 
                     <View className="flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100">
@@ -162,8 +167,17 @@ export default function DashboardScreen({ navigation }) {
                     </TouchableOpacity>
                 </View>
 
-                <View className="h-10" />
+                <View className="h-20" />
             </ScrollView>
+
+            {/* Post a Job Floating Action Button (FAB) */}
+            <TouchableOpacity
+                style={{ position: 'absolute', bottom: 25, right: 25 }}
+                className="bg-slate-900 w-16 h-16 rounded-full items-center justify-center shadow-lg border-[3px] border-white"
+                onPress={() => navigation.navigate('CreateJob')}
+            >
+                <Ionicons name="add" size={32} color="white" />
+            </TouchableOpacity>
         </SafeAreaView>
     );
 }
