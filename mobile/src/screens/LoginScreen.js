@@ -1,23 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../config'; // ADD THIS IMPORT
+import AsyncStorage from '@react-native-async-storage/async-storage'; // <-- 1. ADD THIS IMPORT
+import { API_BASE_URL } from '../../config';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const showError = (msg) => {
+        setErrorMessage(msg);
+        setTimeout(() => setErrorMessage(''), 4000);
+    };
 
     const handleLogin = async () => {
-        // Basic Validation
         if (!email || !password) {
-            return Alert.alert("Error", "Please fill in all fields.");
+            return showError("Please fill in all fields.");
         }
 
         setLoading(true);
+        setErrorMessage('');
+
         try {
-            // REPLACE the hardcoded URL with API_BASE_URL
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -27,29 +34,26 @@ export default function LoginScreen({ navigation }) {
             const data = await response.json();
 
             if (response.ok) {
-                // Login Success!
-                console.log("Login Success User Data:", data.user);
+                console.log("Login Success!");
 
-                // You can pass the user data to the dashboard if needed
+                // --- 2. CRITICAL FIX: SAVE THE TOKEN AND USER DATA ---
+                await AsyncStorage.setItem('userToken', data.token);
+                await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+                // -----------------------------------------------------
+
                 navigation.replace('Dashboard', { user: data.user });
-
             } else {
-                // Login Failed (Wrong password, user not found, or not verified)
-                Alert.alert("Login Failed", data.msg || "Invalid credentials.");
-
-                // Logic: If user is not verified, you could redirect them to OTP screen
-                if (data.unverified) {
-                    // Note: You'd need to send the phone number from the backend in the error response
-                    // to make this navigation work perfectly.
-                }
+                showError(data.msg || "Invalid credentials.");
             }
         } catch (error) {
             console.error("Login Error:", error);
-            Alert.alert("Error", "Could not connect to the server.");
+            showError("Could not connect to the server.");
         } finally {
             setLoading(false);
         }
     };
+
+    // ... (rest of the component remains exactly the same as the previous version)
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
@@ -61,6 +65,13 @@ export default function LoginScreen({ navigation }) {
                     <Text className="text-5xl font-extrabold text-slate-900 tracking-tighter mb-3">HireNear.</Text>
                     <Text className="text-slate-500 text-lg font-medium">Premium services, right at your doorstep.</Text>
                 </View>
+
+                {errorMessage !== '' && (
+                    <View className="bg-red-50 p-3 rounded-2xl border border-red-100 mb-5 flex-row items-center shadow-sm">
+                        <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                        <Text className="text-red-600 font-medium ml-2 flex-1">{errorMessage}</Text>
+                    </View>
+                )}
 
                 <View className="mb-6">
                     <View className="flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100 mb-5">

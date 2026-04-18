@@ -4,13 +4,12 @@ const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['Client', 'Worker'], required: true },
+    // ADDED 'Admin' to the enum below
+    role: { type: String, enum: ['Client', 'Worker', 'Admin'], required: true },
     phone: { type: String, required: true },
     isVerified: { type: Boolean, default: false },
     otp: { type: String, default: null },
 
-    // This field controls the auto-deletion
-    // It will automatically delete the document 300 seconds (5 mins) after the date in this field
     expireAt: {
         type: Date,
         default: null,
@@ -19,7 +18,7 @@ const UserSchema = new mongoose.Schema({
 
     location: {
         type: { type: String, enum: ['Point'], default: 'Point' },
-        coordinates: { type: [Number], required: true }
+        coordinates: { type: [Number], required: false } // Made false so Admins don't strictly need a location
     },
     profileImage: { type: String, default: "" },
     skills: { type: [String], default: [] },
