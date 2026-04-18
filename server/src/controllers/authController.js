@@ -1,6 +1,7 @@
-const User = require('../models/User');
+const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const jwt = require('jsonwebtoken'); // Added JWT for authentication
 
 const formatPhone = (phone) => {
     return phone.startsWith('0') ? '94' + phone.substring(1) : phone;
@@ -44,10 +45,10 @@ exports.registerUser = async (req, res) => {
                     phone: formattedPhone,
                     skills,
                     bio,
-                    location,
+                    location: location || { type: 'Point', coordinates: [0, 0] },
                     otp: generatedOtp,
                     isVerified: false,
-                    expireAt: new Date() // Start the 5-minute timer
+                    expireAt: new Date()
                 });
 
                 await newUser.save();
@@ -78,11 +79,8 @@ exports.verifyOTP = async (req, res) => {
             return res.status(400).json({ msg: 'Invalid or expired OTP' });
         }
 
-        // VERIFICATION SUCCESSFUL
         user.isVerified = true;
         user.otp = null;
-
-        // IMPORTANT: Unset expireAt so the user is NOT deleted after 5 minutes
         user.expireAt = undefined;
 
         await user.save();
@@ -98,13 +96,11 @@ exports.loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // 1. Find user by email
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
-        // 2. Check if account is verified
         if (!user.isVerified) {
             return res.status(401).json({
                 msg: 'Account not verified. Please register again or verify your phone.',
@@ -112,19 +108,33 @@ exports.loginUser = async (req, res) => {
             });
         }
 
-        // 3. Compare passwords
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
-        // 4. Success - Send user data back (excluding the password)
+        // Generate JWT Token
+        const payload = {
+            user: {
+                id: user._id,
+                role: user.role
+            }
+        };
+
+        // Ensure you have JWT_SECRET in your .env file!
+        const token = jwt.sign(
+            payload,
+            process.env.JWT_SECRET || 'your_temporary_secret_key',
+            { expiresIn: '1d' }
+        );
+
         const userResponse = user.toObject();
         delete userResponse.password;
         delete userResponse.otp;
 
         res.status(200).json({
             msg: 'Login successful',
+            token, // Send the token to the frontend
             user: userResponse
         });
 
