@@ -1,12 +1,14 @@
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const jwt = require('jsonwebtoken'); // Added JWT for authentication
 
 const formatPhone = (phone) => {
     return phone.startsWith('0') ? '94' + phone.substring(1) : phone;
 };
 
+// ─── POST /api/auth/register ─────────────────────────────────────────────────
+// Sends OTP via SMS for phone verification
 exports.registerUser = async (req, res) => {
     try {
         const { name, email, password, role, phone, skills, bio, location } = req.body;
@@ -16,6 +18,20 @@ exports.registerUser = async (req, res) => {
 
         const formattedPhone = formatPhone(phone);
         const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        // DEV BYPASS: If SMS credentials not configured, skip SMS and auto-verify
+        if (!process.env.TEXTLK_API_TOKEN || !process.env.TEXTLK_SENDER_ID) {
+            console.warn('⚠️  SMS credentials missing — DEV MODE: auto-verifying user');
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            const newUser = new User({
+                name, email, password: hashedPassword, role,
+                phone: formattedPhone, skills, bio, location,
+                otp: null, isVerified: true, // skip OTP step
+            });
+            await newUser.save();
+            return res.status(201).json({ msg: 'Registered (dev mode — SMS skipped)', phone: formattedPhone });
+        }
 
         try {
             const smsResponse = await axios.post('https://app.text.lk/api/v3/sms/send',
@@ -67,6 +83,7 @@ exports.registerUser = async (req, res) => {
     }
 };
 
+// ─── POST /api/auth/verify-otp ───────────────────────────────────────────────
 exports.verifyOTP = async (req, res) => {
     try {
         const { phone, otp } = req.body;
@@ -81,7 +98,7 @@ exports.verifyOTP = async (req, res) => {
 
         user.isVerified = true;
         user.otp = null;
-        user.expireAt = undefined;
+        user.expireAt = undefined; // Cancel the TTL delete timer
 
         await user.save();
 
@@ -92,54 +109,49 @@ exports.verifyOTP = async (req, res) => {
     }
 };
 
+// ─── POST /api/auth/login ────────────────────────────────────────────────────
+// Returns JWT token for use with protected routes
 exports.loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // 1. Find user
         const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
-        }
+        if (!user) return res.status(400).json({ msg: 'Invalid credentials' });
 
+        // 2. Check if verified
         if (!user.isVerified) {
             return res.status(401).json({
-                msg: 'Account not verified. Please register again or verify your phone.',
+                msg: 'Account not verified. Please complete OTP verification.',
                 unverified: true
             });
         }
 
+        // 3. Check password
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
-        }
+        if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
-        // Generate JWT Token
-        const payload = {
-            user: {
-                id: user._id,
-                role: user.role
-            }
-        };
-
-        // Ensure you have JWT_SECRET in your .env file!
+        // 4. Sign JWT (payload: { id } — matches auth middleware)
         const token = jwt.sign(
-            payload,
-            process.env.JWT_SECRET || 'your_temporary_secret_key',
-            { expiresIn: '1d' }
+            { id: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
         );
 
-        const userResponse = user.toObject();
-        delete userResponse.password;
-        delete userResponse.otp;
-
-        res.status(200).json({
-            msg: 'Login successful',
-            token, // Send the token to the frontend
-            user: userResponse
+        res.json({
+            token,
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                phone: user.phone,
+                skills: user.skills,
+                location: user.location
+            }
         });
-
     } catch (err) {
-        console.error("Login Error:", err.message);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Login Error:', err.message);
+        res.status(500).json({ error: 'Server error', details: err.message });
     }
 };

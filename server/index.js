@@ -1,12 +1,14 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const os = require('os');
 const connectDB = require('./src/config/db');
 
-// 1. Import your Routes
+// Import Routes
 const authRoutes = require('./src/routes/authRoutes');
-const jobRoutes = require('./src/routes/jobRoutes'); // Added Job Routes
+const bidRoutes = require('./src/routes/bidRoutes');
+const jobRoutes = require('./src/routes/jobRoutes');
 
 const app = express();
 
@@ -17,13 +19,17 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-// 2. Register your Routes
+// Static files for bid attachments (uploads)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/jobs', jobRoutes); // Added Job Endpoint
+app.use('/api/bids', bidRoutes);
+app.use('/api/jobs', jobRoutes);
 
-const PORT = process.env.PORT || 4000; // Updated to 4000 as per your last setup
+const PORT = process.env.PORT || 4000;
 
-// Function to dynamically grab the local IPv4 address
+// Dynamically get local IPv4 address
 const getLocalIP = () => {
     const interfaces = os.networkInterfaces();
     for (const devName in interfaces) {
@@ -39,8 +45,6 @@ const getLocalIP = () => {
 };
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`-------------------------------------------`);
     console.log(`Server running on port ${PORT}`);
     console.log(`Local Network URL: http://${getLocalIP()}:${PORT}`);
-    console.log(`-------------------------------------------`);
 });

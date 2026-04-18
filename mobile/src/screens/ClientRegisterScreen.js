@@ -32,22 +32,29 @@ export default function ClientRegisterScreen({ navigation }) {
         setLoading(true);
 
         try {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            let locationData = null;
+            // Try to get GPS location — silently fall back to Colombo default if unavailable
+            let locationData = {
+                type: 'Point',
+                coordinates: [79.8612, 6.9271] // Default: Colombo, Sri Lanka
+            };
 
-            if (status === 'granted') {
-                const currentLocation = await Location.getCurrentPositionAsync({});
-                locationData = {
-                    type: "Point",
-                    coordinates: [currentLocation.coords.longitude, currentLocation.coords.latitude]
-                };
-            } else {
-                Alert.alert("Permission Denied", "Location is required for registration.");
-                setLoading(false);
-                return;
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const currentLocation = await Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                        timeInterval: 5000,
+                    });
+                    locationData = {
+                        type: 'Point',
+                        coordinates: [currentLocation.coords.longitude, currentLocation.coords.latitude]
+                    };
+                }
+            } catch {
+                // Location unavailable (emulator/no GPS) — using Colombo default
             }
 
-            // REPLACE the hardcoded URL with API_BASE_URL
+            // API Call using config URL
             const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -78,7 +85,15 @@ export default function ClientRegisterScreen({ navigation }) {
             // --- END DEBUGGING LOGIC ---
 
             if (response.ok) {
-                navigation.navigate('VerifyOTP', { phone: phone });
+                // Dev mode: user is already verified, skip OTP → go to Login
+                // Production: SMS was sent → go to OTP verification screen
+                if (data.msg && data.msg.includes('dev mode')) {
+                    Alert.alert('Registered!', 'Account created. Please sign in.', [
+                        { text: 'OK', onPress: () => navigation.replace('Login') }
+                    ]);
+                } else {
+                    navigation.navigate('VerifyOTP', { phone: phone });
+                }
             } else {
                 setErrorMessage(data.msg || 'Registration failed');
             }
