@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
@@ -61,7 +61,7 @@ exports.registerUser = async (req, res) => {
                     phone: formattedPhone,
                     skills,
                     bio,
-                    location,
+                    location: location || { type: 'Point', coordinates: [0, 0] },
                     otp: generatedOtp,
                     isVerified: false,
                     expireAt: new Date()
@@ -131,7 +131,7 @@ exports.loginUser = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
-        // 4. Sign JWT
+        // 4. Sign JWT (payload: { id } — matches auth middleware)
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET,

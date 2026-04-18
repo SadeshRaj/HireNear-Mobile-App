@@ -41,10 +41,17 @@ exports.submitBid = async (req, res) => {
 
         // Calculate distance if both coords available
         let distance = null;
-        if (jobCoordinates && req.user.location?.coordinates) {
-            distance = haversineDistance(req.user.location.coordinates, jobCoordinates);
-            distance = Math.round(distance * 10) / 10; // 1 decimal
-        }
+        try {
+            const parsedCoords = typeof jobCoordinates === 'string'
+                ? JSON.parse(jobCoordinates)
+                : jobCoordinates;
+
+            if (Array.isArray(parsedCoords) && req.user.location?.coordinates?.length === 2) {
+                const d = haversineDistance(req.user.location.coordinates, parsedCoords);
+                distance = isNaN(d) ? null : Math.round(d * 10) / 10;
+            }
+        } catch { /* coords malformed — leave distance as null */ }
+
 
         // Collect uploaded file paths
         const attachments = req.files ? req.files.map(f => f.path) : [];

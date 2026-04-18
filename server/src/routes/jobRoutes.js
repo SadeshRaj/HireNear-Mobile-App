@@ -16,7 +16,7 @@ const {
     deleteJob
 } = require('../controllers/jobController');
 
-// ─── Multer Setup (job images) ───────────────────────────────────────────────
+// ─── Multer Setup (job images — local disk) ───────────────────────────────────
 const uploadDir = path.join(__dirname, '../../uploads/jobs');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 

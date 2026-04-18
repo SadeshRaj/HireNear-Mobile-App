@@ -87,7 +87,7 @@ exports.getOpenJobs = async (req, res) => {
     }
 };
 
-
+// ─── GET /api/jobs/nearby ────────────────────────────────────────────────────
 // Worker finds open jobs near their location
 // Query params: lng, lat, maxDistanceKm (default 10)
 exports.getNearbyJobs = async (req, res) => {

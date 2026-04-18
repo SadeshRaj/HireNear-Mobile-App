@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../config'; // ADDED: Import your config
+import { API_BASE_URL } from '../../config';
 
-// Pre-defined list of skills
 const PRESET_SKILLS = ["Plumbing", "Electrical", "Carpentry", "Cleaning", "Painting", "AC Repair", "Gardening", "Masonry"];
 
 export default function WorkerRegisterScreen({ navigation }) {
@@ -13,14 +12,16 @@ export default function WorkerRegisterScreen({ navigation }) {
     const [phone, setPhone] = useState('');
     const [bio, setBio] = useState('');
     const [password, setPassword] = useState('');
-
-    // Skills State
     const [selectedSkills, setSelectedSkills] = useState([]);
     const [customSkill, setCustomSkill] = useState('');
-
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
-    // Toggle skill selection
+    const showError = (msg) => {
+        setErrorMessage(msg);
+        setTimeout(() => setErrorMessage(''), 4000);
+    };
+
     const toggleSkill = (skill) => {
         if (selectedSkills.includes(skill)) {
             setSelectedSkills(selectedSkills.filter(s => s !== skill));
@@ -29,7 +30,6 @@ export default function WorkerRegisterScreen({ navigation }) {
         }
     };
 
-    // Add a custom skill to the list
     const addCustomSkill = () => {
         const trimmed = customSkill.trim();
         if (trimmed && !selectedSkills.includes(trimmed)) {
@@ -40,10 +40,12 @@ export default function WorkerRegisterScreen({ navigation }) {
 
     const handleWorkerRegistration = async () => {
         if (!name || !email || !phone || !password || selectedSkills.length === 0) {
-            return Alert.alert("Error", "Please fill in all fields and select at least one skill.");
+            return showError("Please fill in all fields and select at least one skill.");
         }
 
         setLoading(true);
+        setErrorMessage('');
+
         try {
             const workerData = {
                 name,
@@ -56,7 +58,6 @@ export default function WorkerRegisterScreen({ navigation }) {
                 location: { type: 'Point', coordinates: [79.8612, 6.9271] }
             };
 
-            // CHANGED: Using dynamic API URL
             const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -68,10 +69,10 @@ export default function WorkerRegisterScreen({ navigation }) {
             if (response.ok) {
                 navigation.navigate('VerifyOTP', { phone: data.phone || phone });
             } else {
-                Alert.alert("Registration Failed", data.msg || "Something went wrong.");
+                showError(data.msg || "Registration failed.");
             }
         } catch (error) {
-            Alert.alert("Error", "Could not connect to server.");
+            showError("Could not connect to server.");
         } finally {
             setLoading(false);
         }
@@ -91,7 +92,13 @@ export default function WorkerRegisterScreen({ navigation }) {
                         <Text className="text-slate-500 text-sm font-medium">Select your expertise and join us.</Text>
                     </View>
 
-                    {/* Standard Inputs */}
+                    {errorMessage !== '' && (
+                        <View className="bg-red-50 p-3 rounded-2xl border border-red-100 mb-5 flex-row items-center shadow-sm">
+                            <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                            <Text className="text-red-600 font-medium ml-2 flex-1">{errorMessage}</Text>
+                        </View>
+                    )}
+
                     <View className="space-y-4 mb-6">
                         <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
                             <Ionicons name="person-outline" size={20} color="#94a3b8" />
@@ -109,7 +116,6 @@ export default function WorkerRegisterScreen({ navigation }) {
                         </View>
                     </View>
 
-                    {/* SKILLS TILES SECTION */}
                     <Text className="text-slate-900 font-bold mb-3 text-lg">Your Skills</Text>
                     <View className="flex-row flex-wrap mb-4">
                         {PRESET_SKILLS.map((skill) => {
@@ -126,7 +132,6 @@ export default function WorkerRegisterScreen({ navigation }) {
                         })}
                     </View>
 
-                    {/* CUSTOM SKILL INPUT */}
                     <View className="flex-row items-center bg-white rounded-2xl px-4 py-2 border border-dashed border-gray-300 mb-6">
                         <TextInput
                             placeholder="Other skill..."
@@ -139,7 +144,6 @@ export default function WorkerRegisterScreen({ navigation }) {
                         </TouchableOpacity>
                     </View>
 
-                    {/* BIO & PASSWORD */}
                     <View className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mb-4">
                         <TextInput placeholder="Professional Bio" className="h-20 text-slate-800" multiline value={bio} onChangeText={setBio} textAlignVertical="top" />
                     </View>

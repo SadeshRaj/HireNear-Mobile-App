@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config';
 
-const BASE_URL = 'http://10.0.2.2:4000/api';
+const BASE_URL = API_BASE_URL;
 
 // Get auth token stored at login
 const getToken = async () => {

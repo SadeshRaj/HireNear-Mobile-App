@@ -4,14 +4,18 @@ const path = require('path');
 const cors = require('cors');
 const os = require('os');
 const connectDB = require('./src/config/db');
+
+// Import Routes
 const authRoutes = require('./src/routes/authRoutes');
 const bidRoutes = require('./src/routes/bidRoutes');
 const jobRoutes = require('./src/routes/jobRoutes');
 
 const app = express();
 
+// Connect to MongoDB
 connectDB();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -23,7 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bids', bidRoutes);
 app.use('/api/jobs', jobRoutes);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4000;
 
 // Dynamically get local IPv4 address
 const getLocalIP = () => {
