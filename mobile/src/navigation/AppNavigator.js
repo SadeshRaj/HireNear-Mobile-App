@@ -7,48 +7,46 @@ import ClientRegisterScreen from '../screens/ClientRegisterScreen';
 import WorkerRegisterScreen from '../screens/WorkerRegisterScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 
-// Main tab navigator (from teammate)
+// Client tab navigator (teammate's — Home + My Posts)
 import MainTabNavigator from './MainTabNavigator';
 
-// Client job posting screens (yours)
-import ClientDashboardScreen from '../screens/ClientDashboardScreen';
-import PostJobScreen from '../screens/PostJobScreen';
+// Worker tab navigator (yours — Browse Jobs + My Bids)
+import WorkerTabNavigator from './WorkerTabNavigator';
 
-// Bidding & Proposal System screens (yours)
+// Job creation screen (teammate's, opens over client tabs)
+import CreateJobScreen from '../screens/CreateJobScreen';
+
+// ── Bidding & Proposal System (your part) ────────────────────────────────────
 import SubmitBidScreen from '../screens/SubmitBidScreen';
 import BidListScreen from '../screens/BidListScreen';
 import MyBidsScreen from '../screens/MyBidsScreen';
 import EditBidScreen from '../screens/EditBidScreen';
-
-// Shared job screen (from teammate)
-import CreateJobScreen from '../screens/CreateJobScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
-            {/* ── Auth Flow ───────────────────────────────────────────────── */}
+
+            {/* ── Auth Flow ────────────────────────────────────────────────── */}
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={ClientRegisterScreen} />
             <Stack.Screen name="WorkerRegister" component={WorkerRegisterScreen} />
             <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
 
-            {/* ── Main App (Tab Navigator) ────────────────────────────────── */}
+            {/* ── Client app (teammate's tab navigator) ────────────────────── */}
             <Stack.Screen name="Dashboard" component={MainTabNavigator} />
+            <Stack.Screen name="CreateJob" component={CreateJobScreen} />
 
-            {/* ── Client Dashboard & Job Posting (yours) ──────────────────── */}
-            <Stack.Screen name="ClientDashboard" component={ClientDashboardScreen} />
-            <Stack.Screen name="PostJob" component={PostJobScreen} />
+            {/* ── Worker app (your tab navigator) ──────────────────────────── */}
+            <Stack.Screen name="WorkerDashboard" component={WorkerTabNavigator} />
 
-            {/* ── Bidding & Proposal System (yours) ───────────────────────── */}
+            {/* ── Bidding screens (navigate from both dashboards) ───────────── */}
             <Stack.Screen name="SubmitBid" component={SubmitBidScreen} />
             <Stack.Screen name="BidList" component={BidListScreen} />
             <Stack.Screen name="MyBids" component={MyBidsScreen} />
             <Stack.Screen name="EditBid" component={EditBidScreen} />
 
-            {/* ── Shared (teammate) ────────────────────────────────────────── */}
-            <Stack.Screen name="CreateJob" component={CreateJobScreen} />
         </Stack.Navigator>
     );
 }

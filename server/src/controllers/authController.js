@@ -19,6 +19,20 @@ exports.registerUser = async (req, res) => {
         const formattedPhone = formatPhone(phone);
         const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
+        // DEV BYPASS: If SMS credentials not configured, skip SMS and auto-verify
+        if (!process.env.TEXTLK_API_TOKEN || !process.env.TEXTLK_SENDER_ID) {
+            console.warn('⚠️  SMS credentials missing — DEV MODE: auto-verifying user');
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            const newUser = new User({
+                name, email, password: hashedPassword, role,
+                phone: formattedPhone, skills, bio, location,
+                otp: null, isVerified: true, // skip OTP step
+            });
+            await newUser.save();
+            return res.status(201).json({ msg: 'Registered (dev mode — SMS skipped)', phone: formattedPhone });
+        }
+
         try {
             const smsResponse = await axios.post('https://app.text.lk/api/v3/sms/send',
                 {

@@ -34,15 +34,15 @@ export default function LoginScreen({ navigation }) {
                 await AsyncStorage.setItem('user', JSON.stringify(data.user));
 
                 // Route based on role
-                if (data.user.role === 'Client') {
-                    navigation.replace('ClientDashboard');
+                if (data.user.role === 'Worker') {
+                    navigation.replace('WorkerDashboard', { user: data.user });
                 } else {
-                    navigation.replace('Dashboard');
+                    // Client (or any other role) → teammate's dashboard
+                    navigation.replace('Dashboard', { user: data.user });
                 }
             } else {
                 setError(data.msg || 'Login failed. Check your credentials.');
 
-                // Redirect unverified users back to OTP screen
                 if (data.unverified) {
                     Alert.alert(
                         'Not Verified',

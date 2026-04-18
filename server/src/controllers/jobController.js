@@ -62,7 +62,32 @@ exports.getMyJobs = async (req, res) => {
     }
 };
 
-// ─── GET /api/jobs/nearby ────────────────────────────────────────────────────
+// ─── GET /api/jobs ────────────────────────────────────────────────────────────
+// Worker browses all open jobs (fallback when no GPS location)
+// Optional query params: category, minBudget, maxBudget
+exports.getOpenJobs = async (req, res) => {
+    try {
+        const { category, minBudget, maxBudget } = req.query;
+        const filter = { status: 'open' };
+
+        if (category && category !== 'All') filter.category = category;
+        if (minBudget || maxBudget) {
+            filter.budget = {};
+            if (minBudget) filter.budget.$gte = Number(minBudget);
+            if (maxBudget) filter.budget.$lte = Number(maxBudget);
+        }
+
+        const jobs = await JobPost.find(filter)
+            .sort({ createdAt: -1 })
+            .populate('clientId', 'name');
+        res.json(jobs);
+    } catch (err) {
+        console.error('getOpenJobs error:', err.message);
+        res.status(500).json({ error: 'Server error', details: err.message });
+    }
+};
+
+
 // Worker finds open jobs near their location
 // Query params: lng, lat, maxDistanceKm (default 10)
 exports.getNearbyJobs = async (req, res) => {

@@ -55,4 +55,4 @@ const JobPostSchema = new mongoose.Schema({
 // Enable geo queries (workers find nearby jobs)
 JobPostSchema.index({ location: '2dsphere' });
 
-module.exports = mongoose.model('JobPost', JobPostSchema);
+module.exports = mongoose.model('JobPost', JobPostSchema, 'job_posts');

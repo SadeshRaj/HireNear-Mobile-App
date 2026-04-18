@@ -1,8 +1,5 @@
-// config.js
+// config.js — Single source of truth for the API URL
+// Set EXPO_PUBLIC_API_URL in mobile/.env to switch between emulator and physical device
 
-// Paste the IP address your friend's terminal spits out right here.
-// When their IP changes tomorrow, you ONLY change this one line.
-const LOCAL_IP = '192.168.8.140';
-const PORT = '5000';
-
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+export const API_BASE_URL =
+    process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:4000/api';
