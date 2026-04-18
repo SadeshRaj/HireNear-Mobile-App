@@ -34,7 +34,7 @@ export default function MainTabNavigator({ route }) {
             <Tab.Screen
                 name="My Posts"
                 component={MyJobPostsScreen}
-                initialParams={{ user }}
+                initialParams={{ user, userId: user?._id || user?.id }}
             />
         </Tab.Navigator>
     );

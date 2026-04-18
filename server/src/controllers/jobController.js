@@ -5,28 +5,39 @@ const Bid = require('../models/Bid');
 // Client creates a new job (with optional image uploads)
 exports.createJob = async (req, res) => {
     try {
-        const { title, description, category, budget, deadline, location } = req.body;
+        const { title, description, category, budget, deadline, location, latitude, longitude, clientId } = req.body;
 
-        if (!title || !description || !category || !budget || !deadline || !location) {
-            return res.status(400).json({ msg: 'All fields are required' });
+        if (!title || !description || !category || !budget || !deadline) {
+            return res.status(400).json({ msg: 'title, description, category, budget and deadline are required' });
         }
 
-        // Parse location if sent as JSON string (from FormData)
-        let parsedLocation = location;
-        if (typeof location === 'string') {
-            parsedLocation = JSON.parse(location);
+        // Build location — accept either a JSON location object OR separate lat/lng fields
+        let parsedLocation = null;
+        if (location) {
+            parsedLocation = typeof location === 'string' ? JSON.parse(location) : location;
+        } else if (latitude && longitude) {
+            parsedLocation = {
+                type: 'Point',
+                coordinates: [parseFloat(longitude), parseFloat(latitude)]
+            };
+        }
+
+        // clientId: use authenticated user OR the one sent in body (friend's screen compat)
+        const resolvedClientId = req.user?._id || clientId;
+        if (!resolvedClientId) {
+            return res.status(400).json({ msg: 'clientId is required' });
         }
 
         const images = req.files ? req.files.map(f => f.path) : [];
 
         const job = new JobPost({
-            clientId: req.user._id,
+            clientId: resolvedClientId,
             title,
             description,
             category,
             budget: Number(budget),
             deadline: new Date(deadline),
-            location: parsedLocation,
+            ...(parsedLocation && { location: parsedLocation }),
             images
         });
 
@@ -59,6 +70,18 @@ exports.getMyJobs = async (req, res) => {
     } catch (err) {
         console.error('getMyJobs error:', err.message);
         res.status(500).json({ error: 'Server error', details: err.message });
+    }
+};
+
+// ─── GET /api/jobs/my-jobs/:userId ───────────────────────────────────────────
+// Alias for friend's MyJobPostsScreen — queries by userId string param
+exports.getMyJobsByUserId = async (req, res) => {
+    try {
+        const jobs = await JobPost.find({ clientId: req.params.userId }).sort({ createdAt: -1 });
+        res.status(200).json({ success: true, jobs });
+    } catch (err) {
+        console.error('getMyJobsByUserId error:', err.message);
+        res.status(500).json({ success: false, message: 'Error fetching jobs' });
     }
 };
 
