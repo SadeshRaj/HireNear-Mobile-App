@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_BASE_URL } from '../../config';
 
-export default function MyJobPostsScreen({ route }) {
+export default function MyJobPostsScreen({ route, navigation }) {
     // 1. Get the user object from route params (passed from MainTabNavigator)
     const { user } = route.params || {};
 
@@ -52,7 +52,10 @@ export default function MyJobPostsScreen({ route }) {
     };
 
     const renderItem = ({ item }) => (
-        <TouchableOpacity className="bg-white rounded-3xl p-5 mb-4 shadow-sm border border-gray-100">
+        <TouchableOpacity
+            className="bg-white rounded-3xl p-5 mb-4 shadow-sm border border-gray-100"
+            onPress={() => navigation.navigate('BidList', { job: item })}
+        >
             <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1">
                     <Text className="text-lg font-bold text-slate-900">{item.title}</Text>
@@ -72,8 +75,12 @@ export default function MyJobPostsScreen({ route }) {
                     <Text className="text-gray-400 text-[10px] uppercase font-bold">Budget</Text>
                     <Text className="text-slate-900 font-extrabold">Rs. {item.budget?.toLocaleString()}</Text>
                 </View>
-                <TouchableOpacity className="bg-slate-900 px-4 py-2 rounded-xl">
-                    <Text className="text-white text-xs font-bold">View Details</Text>
+                <TouchableOpacity
+                    className="flex-row items-center bg-slate-900 px-4 py-2 rounded-xl gap-1"
+                    onPress={() => navigation.navigate('BidList', { job: item })}
+                >
+                    <Ionicons name="people-outline" size={13} color="white" />
+                    <Text className="text-white text-xs font-bold">View Bids</Text>
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
