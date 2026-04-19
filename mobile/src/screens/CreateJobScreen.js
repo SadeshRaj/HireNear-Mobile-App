@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Image, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useRef } from 'react'; // ADDED useRef
+import {
+    View, Text, TextInput, TouchableOpacity, ScrollView,
+    KeyboardAvoidingView, Platform, Image, Alert, ActivityIndicator, Modal, StyleSheet
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import DateTimePicker from '@react-native-community/datetimepicker'; // NEW IMPORT
+import DateTimePicker from '@react-native-community/datetimepicker';
+import MapView, { Marker } from 'react-native-maps';
 import { API_BASE_URL } from '../../config';
 
 const CATEGORIES = ["Plumbing", "Electrical", "Cleaning", "Repairs", "Carpentry", "Painting", "Gardening"];
 
 export default function CreateJobScreen({ navigation, route }) {
-    // Dynamically getting the logged-in user's ID passed from the previous screen
     const { userId } = route.params || {};
 
     const [title, setTitle] = useState('');
@@ -23,6 +26,24 @@ export default function CreateJobScreen({ navigation, route }) {
     // Date Picker States
     const [deadline, setDeadline] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    // Map States
+    const [isMapVisible, setIsMapVisible] = useState(false);
+    const [customLocation, setCustomLocation] = useState(null);
+    const [tempMarker, setTempMarker] = useState(null);
+
+    // NEW: Search States & Map Ref
+    const mapRef = useRef(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+
+    // Initial Map Region (Centered on Sri Lanka)
+    const sriLankaRegion = {
+        latitude: 7.8731,
+        longitude: 80.7718,
+        latitudeDelta: 3.5,
+        longitudeDelta: 3.5,
+    };
 
     const pickImages = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
@@ -37,9 +58,55 @@ export default function CreateJobScreen({ navigation, route }) {
     };
 
     const handleDateChange = (event, selectedDate) => {
-        setShowDatePicker(Platform.OS === 'ios'); // iOS keeps it open, Android auto-closes
+        setShowDatePicker(Platform.OS === 'ios');
         if (selectedDate) {
             setDeadline(selectedDate);
+        }
+    };
+
+    // Map Handlers
+    const handleMapPress = (e) => {
+        setTempMarker(e.nativeEvent.coordinate);
+    };
+
+    const confirmLocation = () => {
+        if (tempMarker) {
+            setCustomLocation(tempMarker);
+        }
+        setIsMapVisible(false);
+    };
+
+    // NEW: Search Handler
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) return;
+
+        setIsSearching(true);
+        try {
+            // Geocode the text into coordinates
+            const results = await Location.geocodeAsync(searchQuery);
+
+            if (results.length > 0) {
+                const { latitude, longitude } = results[0];
+                const newCoords = { latitude, longitude };
+
+                // Set the pin
+                setTempMarker(newCoords);
+
+                // Animate the map to zoom in on the searched location
+                mapRef.current?.animateToRegion({
+                    latitude,
+                    longitude,
+                    latitudeDelta: 0.05, // Zoomed in closer
+                    longitudeDelta: 0.05,
+                }, 1000);
+            } else {
+                Alert.alert("Not Found", "Could not find that location. Please try a different name.");
+            }
+        } catch (error) {
+            Alert.alert("Error", "Location search failed.");
+            console.error(error);
+        } finally {
+            setIsSearching(false);
         }
     };
 
@@ -50,22 +117,31 @@ export default function CreateJobScreen({ navigation, route }) {
         setLoading(true);
 
         try {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                setLoading(false);
-                return Alert.alert("Permission Denied", "Location is needed to post a job.");
+            let finalLat, finalLng;
+
+            if (customLocation) {
+                finalLat = customLocation.latitude;
+                finalLng = customLocation.longitude;
+            } else {
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    setLoading(false);
+                    return Alert.alert("Permission Denied", "Location is needed to post a job. Please pin a location on the map.");
+                }
+                let location = await Location.getCurrentPositionAsync({});
+                finalLat = location.coords.latitude;
+                finalLng = location.coords.longitude;
             }
-            let location = await Location.getCurrentPositionAsync({});
 
             const formData = new FormData();
-            formData.append('clientId', userId); // Sending dynamic ID as string
+            formData.append('clientId', userId);
             formData.append('title', title);
             formData.append('category', category);
             formData.append('description', description);
             formData.append('budget', budget);
-            formData.append('deadline', deadline.toISOString()); // Sending the selected date
-            formData.append('longitude', location.coords.longitude);
-            formData.append('latitude', location.coords.latitude);
+            formData.append('deadline', deadline.toISOString());
+            formData.append('latitude', finalLat);
+            formData.append('longitude', finalLng);
 
             images.forEach((img, index) => {
                 formData.append('images', {
@@ -169,10 +245,32 @@ export default function CreateJobScreen({ navigation, route }) {
                             value={deadline}
                             mode="date"
                             display="default"
-                            minimumDate={new Date()} // Prevent picking past dates
+                            minimumDate={new Date()}
                             onChange={handleDateChange}
                         />
                     )}
+
+                    {/* Location Selector */}
+                    <View className="mb-6">
+                        <Text className="text-slate-900 font-bold mb-2 ml-1">Service Location</Text>
+                        <View className="flex-row items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
+                            <View className="flex-row items-center flex-1">
+                                <Ionicons name="location-outline" size={22} color={customLocation ? "#059669" : "#94a3b8"} />
+                                <Text className={`ml-2 font-medium ${customLocation ? "text-emerald-700" : "text-slate-500"}`}>
+                                    {customLocation ? "Custom Map Pin Selected" : "Using Current Device Location"}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                className="bg-slate-100 px-3 py-2 rounded-xl"
+                                onPress={() => {
+                                    setTempMarker(customLocation);
+                                    setIsMapVisible(true);
+                                }}
+                            >
+                                <Text className="text-slate-800 font-bold text-xs">Change</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
                     {/* Image Upload Area */}
                     <View className="mb-8">
@@ -205,6 +303,66 @@ export default function CreateJobScreen({ navigation, route }) {
 
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Full Screen Map Modal */}
+            <Modal visible={isMapVisible} animationType="slide">
+                <View className="flex-1 bg-white">
+
+                    {/* NEW: Search Bar Header */}
+                    <View className="absolute top-12 left-5 right-5 z-10 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                        <View className="flex-row items-center px-4 py-3 border-b border-gray-50">
+                            <Ionicons name="search" size={20} color="#94a3b8" />
+                            <TextInput
+                                className="flex-1 ml-3 text-slate-800 text-base"
+                                placeholder="Search city or address..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                onSubmitEditing={handleSearch}
+                                returnKeyType="search"
+                            />
+                            {isSearching ? (
+                                <ActivityIndicator size="small" color="#0f172a" className="ml-2" />
+                            ) : (
+                                <TouchableOpacity onPress={() => setIsMapVisible(false)} className="ml-2 p-1">
+                                    <Ionicons name="close-circle" size={24} color="#94a3b8" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <View className="px-4 py-2 bg-slate-50">
+                            <Text className="text-[11px] text-slate-500 text-center font-medium">
+                                Search above or tap anywhere on the map to pin a location
+                            </Text>
+                        </View>
+                    </View>
+
+                    <MapView
+                        ref={mapRef} // Added Map ref
+                        style={StyleSheet.absoluteFillObject}
+                        initialRegion={sriLankaRegion}
+                        onPress={handleMapPress}
+                    >
+                        {tempMarker && (
+                            <Marker
+                                coordinate={tempMarker}
+                                title="Service Location"
+                                description="The worker will come here"
+                                pinColor="red"
+                            />
+                        )}
+                    </MapView>
+
+                    <View className="absolute bottom-10 left-5 right-5 z-10">
+                        <TouchableOpacity
+                            className={`rounded-2xl py-4 items-center shadow-lg ${tempMarker ? 'bg-slate-900' : 'bg-slate-300'}`}
+                            disabled={!tempMarker}
+                            onPress={confirmLocation}
+                        >
+                            <Text className="text-white font-bold text-lg">Confirm Location</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }
