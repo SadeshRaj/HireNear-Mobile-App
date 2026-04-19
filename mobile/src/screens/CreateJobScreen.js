@@ -11,7 +11,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import MapView, { Marker } from 'react-native-maps';
 import { API_BASE_URL } from '../../config';
 
-const CATEGORIES = ["Plumbing", "Electrical", "Cleaning", "Repairs", "Carpentry", "Painting", "Gardening"];
+const CATEGORIES = ["Plumbing", "Electrical", "Cleaning", "Repairs", "Carpentry", "Painting", "Gardening", "Other"];
 
 export default function CreateJobScreen({ navigation, route }) {
     const { userId } = route.params || {};
