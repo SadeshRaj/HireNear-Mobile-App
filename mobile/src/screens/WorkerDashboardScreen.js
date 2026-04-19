@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity,
-    ActivityIndicator, RefreshControl, ScrollView
+    ActivityIndicator, RefreshControl, ScrollView, Modal, TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -22,15 +22,10 @@ const CAT_STYLE = {
 };
 
 const getCatStyle = (cat) => CAT_STYLE[cat] || CAT_STYLE.Other;
-
-const formatBudget = (b) =>
-    b !== undefined ? `LKR ${Number(b).toLocaleString()}` : '–';
-
+const formatBudget = (b) => b !== undefined ? `LKR ${Number(b).toLocaleString()}` : '–';
 const formatDeadline = (d) => {
     if (!d) return '–';
-    return new Date(d).toLocaleDateString('en-GB', {
-        day: 'numeric', month: 'short', year: 'numeric',
-    });
+    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 export default function WorkerDashboardScreen({ navigation }) {
@@ -40,9 +35,22 @@ export default function WorkerDashboardScreen({ navigation }) {
     const [activeCategory, setActiveCategory] = useState('All');
     const [workerName, setWorkerName] = useState('there');
     const [workerLocation, setWorkerLocation] = useState(null);
-    const [error, setError] = useState('');
 
-    // Load worker name + get GPS location on mount
+    // Custom Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+    // Modal & Profile States
+    const [isProfileModalVisible, setProfileModalVisible] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+    const showToast = (message, type = 'success') => {
+        setToast({ visible: true, message, type });
+        setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
+    };
+
     useEffect(() => {
         AsyncStorage.getItem('user').then(raw => {
             if (raw) {
@@ -58,10 +66,7 @@ export default function WorkerDashboardScreen({ navigation }) {
                     const pos = await Location.getCurrentPositionAsync({
                         accuracy: Location.Accuracy.Balanced,
                     });
-                    setWorkerLocation({
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude,
-                    });
+                    setWorkerLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
                 }
             } catch { /* location is optional */ }
         })();
@@ -73,11 +78,9 @@ export default function WorkerDashboardScreen({ navigation }) {
             let url;
 
             if (workerLocation) {
-                // Nearby jobs within 15 km
                 url = `${API_BASE_URL}/jobs/nearby?lat=${workerLocation.lat}&lng=${workerLocation.lng}&maxDistanceKm=15`;
                 if (activeCategory !== 'All') url += `&category=${activeCategory}`;
             } else {
-                // Fallback: all open jobs
                 url = `${API_BASE_URL}/jobs`;
                 if (activeCategory !== 'All') url += `?category=${activeCategory}`;
             }
@@ -89,12 +92,11 @@ export default function WorkerDashboardScreen({ navigation }) {
 
             if (Array.isArray(data)) {
                 setJobs(data);
-                setError('');
             } else {
-                setError(data.msg || 'Failed to load jobs.');
+                showToast(data.msg || 'Failed to load jobs.', 'error');
             }
         } catch {
-            setError('Network error. Make sure the server is running.');
+            showToast('Network error. Make sure the server is running.', 'error');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -111,101 +113,87 @@ export default function WorkerDashboardScreen({ navigation }) {
         fetchJobs();
     };
 
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('user');
+            setProfileModalVisible(false);
+            navigation.replace('Login');
+        } catch (error) {
+            console.error("Logout failed", error);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!oldPassword || !newPassword) {
+            showToast('Please fill in both fields', 'error');
+            return;
+        }
+
+        setIsSubmittingPassword(true);
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ oldPassword, newPassword }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast('Password updated successfully!', 'success');
+                setIsChangingPassword(false);
+                setOldPassword('');
+                setNewPassword('');
+            } else {
+                showToast(data.msg || 'Failed to update password', 'error');
+            }
+        } catch (error) {
+            showToast('Network error', 'error');
+        } finally {
+            setIsSubmittingPassword(false);
+        }
+    };
+
     const renderJob = ({ item }) => {
         const cat = getCatStyle(item.category);
-        const isNearby = !!workerLocation; // All jobs from nearby endpoint are nearby
 
         return (
             <View style={{
-                backgroundColor: 'white',
-                borderRadius: 28,
-                padding: 20,
-                marginBottom: 16,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                elevation: 3,
-                borderWidth: 1,
-                borderColor: '#f1f5f9',
+                backgroundColor: 'white', borderRadius: 28, padding: 20, marginBottom: 16,
+                shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, borderWidth: 1, borderColor: '#f1f5f9',
             }}>
-                {/* Title row */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                        <View style={{
-                            width: 48, height: 48, borderRadius: 16,
-                            backgroundColor: cat.bg,
-                            alignItems: 'center', justifyContent: 'center', marginRight: 12
-                        }}>
+                        <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: cat.bg, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                             <MaterialIcons name={cat.icon} size={22} color={cat.color} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 15, lineHeight: 20 }} numberOfLines={1}>
-                                {item.title}
-                            </Text>
-                            <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600', marginTop: 2 }}>
-                                {item.category}
-                            </Text>
+                            <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 15, lineHeight: 20 }} numberOfLines={1}>{item.title}</Text>
+                            <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600', marginTop: 2 }}>{item.category}</Text>
                         </View>
                     </View>
-
-                    {isNearby && (
-                        <View style={{
-                            flexDirection: 'row', alignItems: 'center',
-                            backgroundColor: '#fff7ed', paddingHorizontal: 10, paddingVertical: 6,
-                            borderRadius: 20, borderWidth: 1, borderColor: '#fed7aa', marginLeft: 8
-                        }}>
-                            <Text style={{ fontSize: 11 }}>🔥</Text>
-                            <Text style={{ color: '#ea580c', fontWeight: '800', fontSize: 11, marginLeft: 3 }}>Nearby</Text>
-                        </View>
-                    )}
                 </View>
 
-                {/* Budget & Deadline chips */}
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                    <View style={{
-                        flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: '#ecfdf5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12
-                    }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ecfdf5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
                         <Ionicons name="cash-outline" size={14} color="#059669" />
-                        <Text style={{ color: '#047857', fontWeight: '700', fontSize: 13, marginLeft: 5 }}>
-                            {formatBudget(item.budget)}
-                        </Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
-                        <Text style={{ color: '#64748b', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
-                            {formatDeadline(item.deadline)}
-                        </Text>
+                        <Text style={{ color: '#047857', fontWeight: '700', fontSize: 13, marginLeft: 5 }}>{formatBudget(item.budget)}</Text>
                     </View>
                 </View>
 
-                {/* Description */}
                 {!!item.description && (
-                    <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 19, marginBottom: 14 }} numberOfLines={2}>
-                        {item.description}
-                    </Text>
+                    <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 19, marginBottom: 14 }} numberOfLines={2}>{item.description}</Text>
                 )}
 
-                {/* Client + Bid button */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{
-                            width: 28, height: 28, borderRadius: 14,
-                            backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginRight: 8
-                        }}>
-                            <Ionicons name="person" size={14} color="#64748b" />
-                        </View>
-                        <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>
-                            {item.clientId?.name || 'Client'}
-                        </Text>
-                    </View>
-
                     <TouchableOpacity
-                        style={{
-                            backgroundColor: '#0f172a', borderRadius: 16,
-                            paddingHorizontal: 20, paddingVertical: 10
-                        }}
+                        style={{ backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 }}
                         onPress={() => navigation.navigate('SubmitBid', { job: item })}
                     >
                         <Text style={{ color: 'white', fontWeight: '800', fontSize: 13 }}>Place Bid →</Text>
@@ -217,8 +205,22 @@ export default function WorkerDashboardScreen({ navigation }) {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FB' }}>
+            {/* Custom Disappearing Toast */}
+            {toast.visible && (
+                <View style={{
+                    position: 'absolute', top: 50, left: 20, right: 20, zIndex: 100,
+                    backgroundColor: toast.type === 'error' ? '#fef2f2' : '#ecfdf5',
+                    borderWidth: 1, borderColor: toast.type === 'error' ? '#f87171' : '#34d399',
+                    padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12,
+                }}>
+                    <Ionicons name={toast.type === 'error' ? "warning" : "checkmark-circle"} size={24} color={toast.type === 'error' ? '#ef4444' : '#10b981'} />
+                    <Text style={{ marginLeft: 12, color: toast.type === 'error' ? '#b91c1c' : '#047857', fontWeight: '700', fontSize: 14 }}>
+                        {toast.message}
+                    </Text>
+                </View>
+            )}
 
-            {/* Header */}
             <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View>
                     <Text style={{ color: '#94a3b8', fontSize: 13, fontWeight: '600' }}>Welcome back</Text>
@@ -228,109 +230,47 @@ export default function WorkerDashboardScreen({ navigation }) {
                 </View>
                 <TouchableOpacity
                     style={{
-                        backgroundColor: 'white', padding: 12, borderRadius: 50,
-                        shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.08, shadowRadius: 4, elevation: 2,
-                        borderWidth: 1, borderColor: '#f1f5f9'
+                        backgroundColor: '#e2e8f0', width: 45, height: 45, borderRadius: 50,
+                        alignItems: 'center', justifyContent: 'center',
+                        borderWidth: 2, borderColor: 'white', shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, elevation: 2
                     }}
-                    onPress={() => navigation.replace('Login')}
+                    onPress={() => setProfileModalVisible(true)}
                 >
-                    <Ionicons name="log-out-outline" size={20} color="#64748b" />
+                    <Ionicons name="person" size={20} color="#64748b" />
                 </TouchableOpacity>
             </View>
 
-            {/* Location status banner */}
             <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
                 <View style={{
-                    flexDirection: 'row', alignItems: 'center',
-                    backgroundColor: 'white', borderRadius: 16,
-                    paddingHorizontal: 16, paddingVertical: 11,
-                    borderWidth: 1, borderColor: '#f1f5f9',
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+                    flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 16,
+                    paddingHorizontal: 16, paddingVertical: 11, borderWidth: 1, borderColor: '#f1f5f9',
                 }}>
-                    <Ionicons
-                        name="location"
-                        size={16}
-                        color={workerLocation ? '#047857' : '#94a3b8'}
-                    />
-                    <Text style={{
-                        marginLeft: 8, fontSize: 13, fontWeight: '600',
-                        color: workerLocation ? '#047857' : '#94a3b8',
-                    }}>
-                        {workerLocation
-                            ? '🔥 Showing jobs near you (within 15 km)'
-                            : 'Showing all open jobs • Enable location for nearby'}
+                    <Ionicons name="location" size={16} color={workerLocation ? '#047857' : '#94a3b8'} />
+                    <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: workerLocation ? '#047857' : '#94a3b8' }}>
+                        {workerLocation ? '🔥 Showing jobs near you (within 15 km)' : 'Showing all open jobs'}
                     </Text>
                 </View>
             </View>
 
-            {/* Category filter */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ flexGrow: 0, marginBottom: 16 }}
-                contentContainerStyle={{ paddingHorizontal: 20 }}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
                 {CATEGORIES.map(cat => (
                     <TouchableOpacity
-                        key={cat}
-                        onPress={() => setActiveCategory(cat)}
+                        key={cat} onPress={() => setActiveCategory(cat)}
                         style={{
-                            marginRight: 8,
-                            paddingHorizontal: 16, paddingVertical: 8,
-                            borderRadius: 20,
+                            marginRight: 8, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
                             backgroundColor: activeCategory === cat ? '#0f172a' : 'white',
-                            borderWidth: 1,
-                            borderColor: activeCategory === cat ? '#0f172a' : '#e2e8f0',
+                            borderWidth: 1, borderColor: activeCategory === cat ? '#0f172a' : '#e2e8f0',
                         }}
                     >
-                        <Text style={{
-                            fontSize: 13, fontWeight: '700',
-                            color: activeCategory === cat ? 'white' : '#64748b',
-                        }}>
-                            {cat}
-                        </Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: activeCategory === cat ? 'white' : '#64748b' }}>{cat}</Text>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
 
-            {/* Job count */}
-            {!loading && !error && (
-                <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 13, fontWeight: '600' }}>
-                        {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'} available
-                        {activeCategory !== 'All' ? ` · ${activeCategory}` : ''}
-                    </Text>
-                </View>
-            )}
-
-            {/* Content */}
             {loading ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                     <ActivityIndicator size="large" color="#0f172a" />
-                    <Text style={{ color: '#94a3b8', marginTop: 12, fontWeight: '600' }}>Looking for jobs...</Text>
-                </View>
-            ) : error ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-                    <Ionicons name="wifi-outline" size={52} color="#cbd5e1" />
-                    <Text style={{ color: '#94a3b8', fontWeight: '600', marginTop: 12, textAlign: 'center' }}>{error}</Text>
-                    <TouchableOpacity
-                        style={{ marginTop: 20, backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}
-                        onPress={fetchJobs}
-                    >
-                        <Text style={{ color: 'white', fontWeight: '700' }}>Retry</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : jobs.length === 0 ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-                    <Text style={{ fontSize: 52, marginBottom: 16 }}>🔍</Text>
-                    <Text style={{ color: '#0f172a', fontSize: 20, fontWeight: '800', marginBottom: 8 }}>No Jobs Found</Text>
-                    <Text style={{ color: '#94a3b8', textAlign: 'center', fontWeight: '500' }}>
-                        {activeCategory === 'All'
-                            ? 'No open jobs right now. Pull down to refresh.'
-                            : `No open jobs in ${activeCategory}. Try another category.`}
-                    </Text>
                 </View>
             ) : (
                 <FlatList
@@ -342,6 +282,64 @@ export default function WorkerDashboardScreen({ navigation }) {
                     renderItem={renderJob}
                 />
             )}
+
+            <Modal animationType="slide" transparent={true} visible={isProfileModalVisible} onRequestClose={() => { setProfileModalVisible(false); setIsChangingPassword(false); }}>
+                <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => { setProfileModalVisible(false); setIsChangingPassword(false); }}>
+                    <TouchableOpacity activeOpacity={1} style={{ backgroundColor: 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 }}>
+                        <View style={{ width: 40, height: 5, backgroundColor: '#e2e8f0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 }} />
+
+                        {!isChangingPassword ? (
+                            <>
+                                <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 24 }}>Account Settings</Text>
+
+                                {/* Portfolio Navigation Button */}
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}
+                                    onPress={() => {
+                                        setProfileModalVisible(false);
+                                        navigation.navigate('WorkerPortfolio');
+                                    }}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="briefcase-outline" size={20} color="#3b82f6" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Manage Portfolio</Text>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }} onPress={() => setIsChangingPassword(true)}>
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="lock-closed-outline" size={20} color="#0f172a" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Change Password</Text>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16 }} onPress={handleLogout}>
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', flex: 1 }}>Sign Out</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+                                    <TouchableOpacity onPress={() => setIsChangingPassword(false)} style={{ marginRight: 16 }}>
+                                        <Ionicons name="arrow-back" size={24} color="#0f172a" />
+                                    </TouchableOpacity>
+                                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Change Password</Text>
+                                </View>
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="Current Password" secureTextEntry value={oldPassword} onChangeText={setOldPassword} />
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="New Password" secureTextEntry value={newPassword} onChangeText={setNewPassword} />
+                                <TouchableOpacity style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 18, alignItems: 'center', opacity: isSubmittingPassword ? 0.7 : 1 }} onPress={handleChangePassword} disabled={isSubmittingPassword}>
+                                    {isSubmittingPassword ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Update Password</Text>}
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
         </SafeAreaView>
     );
 }
