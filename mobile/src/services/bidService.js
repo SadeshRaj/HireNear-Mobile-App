@@ -18,7 +18,7 @@ const authHeaders = async () => {
 };
 
 // ─── Submit a bid (with optional file attachments) ───────────────────────────
-export const submitBid = async ({ jobId, price, message, estimatedTime, jobCoordinates, files = [] }) => {
+export const submitBid = async ({ jobId, price, message, estimatedTime, jobCoordinates, workerLat, workerLng, files = [] }) => {
     const token = await getToken();
     const formData = new FormData();
     formData.append('jobId', jobId);
@@ -27,6 +27,10 @@ export const submitBid = async ({ jobId, price, message, estimatedTime, jobCoord
     formData.append('estimatedTime', estimatedTime || '');
     if (jobCoordinates) {
         formData.append('jobCoordinates', JSON.stringify(jobCoordinates));
+    }
+    if (workerLat != null && workerLng != null) {
+        formData.append('workerLat', String(workerLat));
+        formData.append('workerLng', String(workerLng));
     }
     files.forEach((file, i) => {
         formData.append('attachments', {
@@ -43,6 +47,7 @@ export const submitBid = async ({ jobId, price, message, estimatedTime, jobCoord
     });
     return response.json();
 };
+
 
 // ─── Get all bids for a job (client view) ───────────────────────────────────
 export const getBidsForJob = async (jobId) => {
