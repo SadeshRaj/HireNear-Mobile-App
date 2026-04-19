@@ -4,7 +4,6 @@ const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    // ADDED 'Admin' to the enum below
     role: { type: String, enum: ['Client', 'Worker', 'Admin'], required: true },
     phone: { type: String, required: true },
     isVerified: { type: Boolean, default: false },
@@ -18,11 +17,15 @@ const UserSchema = new mongoose.Schema({
 
     location: {
         type: { type: String, enum: ['Point'], default: 'Point' },
-        coordinates: { type: [Number], required: false } // Made false so Admins don't strictly need a location
+        coordinates: { type: [Number], required: false }
     },
-    profileImage: { type: String, default: "" },
+
+    // Updated Profile Fields
+    profileImage: { type: String, default: "https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback" },
     skills: { type: [String], default: [] },
-    bio: { type: String, default: "" },
+    bio: { type: String, default: "No description provided yet." },
+    status: { type: String, enum: ['Available', 'Working', 'Offline'], default: 'Available' }, // Added Status
+
     rating: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0 }
 }, { timestamps: true });
