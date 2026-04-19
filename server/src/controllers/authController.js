@@ -155,3 +155,62 @@ exports.loginUser = async (req, res) => {
         res.status(500).json({ error: 'Server error', details: err.message });
     }
 };
+// ─── PUT /api/auth/change-password ───────────────────────────────────────────
+exports.changePassword = async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+
+        // req.user is set by the protect middleware
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+
+        // Verify old password
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ msg: 'Incorrect current password' });
+        }
+
+        // Hash and save new password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
+
+        res.status(200).json({ msg: 'Password updated successfully' });
+    } catch (err) {
+        console.error('Change Password Error:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+// ─── PUT /api/auth/profile ───────────────────────────────────────────────────
+// Updates the user's bio, status, and profile image
+exports.updateProfile = async (req, res) => {
+    try {
+        const { bio, status, profileImage } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        if (bio !== undefined) user.bio = bio;
+        if (status !== undefined) user.status = status;
+        if (profileImage !== undefined) user.profileImage = profileImage;
+
+        await user.save();
+
+        res.status(200).json({
+            msg: 'Profile updated successfully',
+            user: {
+                _id: user._id,
+                name: user.name,
+                bio: user.bio,
+                status: user.status,
+                profileImage: user.profileImage
+            }
+        });
+    } catch (err) {
+        console.error('Update Profile Error:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
