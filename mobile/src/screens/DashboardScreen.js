@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {View, Text, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, FlatList, Alert} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, FlatList, Alert, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config';
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +21,13 @@ export default function DashboardScreen({ navigation, route }) {
     const user = route?.params?.user;
     const firstName = user?.name ? user.name.split(' ')[0] : 'Guest';
 
+    // Modal & Profile States
+    const [isProfileModalVisible, setProfileModalVisible] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
     useEffect(() => {
         const interval = setInterval(() => {
             let nextIndex = activeIndex + 1;
@@ -33,6 +42,53 @@ export default function DashboardScreen({ navigation, route }) {
 
         return () => clearInterval(interval);
     }, [activeIndex]);
+
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('user');
+            await AsyncStorage.removeItem('rememberMe'); // Clear remember me preference
+            setProfileModalVisible(false);
+            navigation.replace('Login');
+        } catch (error) {
+            console.error("Logout failed", error);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!oldPassword || !newPassword) {
+            Alert.alert('Error', 'Please fill in both fields');
+            return;
+        }
+
+        setIsSubmittingPassword(true);
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ oldPassword, newPassword }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                Alert.alert('Success', 'Password updated successfully!');
+                setIsChangingPassword(false);
+                setOldPassword('');
+                setNewPassword('');
+            } else {
+                Alert.alert('Error', data.msg || 'Failed to update password');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Network error');
+        } finally {
+            setIsSubmittingPassword(false);
+        }
+    };
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
@@ -57,9 +113,9 @@ export default function DashboardScreen({ navigation, route }) {
                         </View>
                         <TouchableOpacity
                             className="bg-white p-2.5 rounded-full shadow-sm border border-gray-100"
-                            onPress={() => navigation.replace('Login')}
+                            onPress={() => setProfileModalVisible(true)}
                         >
-                            <Ionicons name="log-out-outline" size={20} color="#64748b" />
+                            <Ionicons name="person" size={20} color="#64748b" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -145,7 +201,7 @@ export default function DashboardScreen({ navigation, route }) {
                 <View className="h-20" />
             </ScrollView>
 
-            {/* UPDATED FAB: Passes the userId to CreateJob screen */}
+            {/* FAB: Passes the userId to CreateJob screen */}
             <TouchableOpacity
                 style={{ position: 'absolute', bottom: 25, right: 25 }}
                 className="bg-slate-900 w-16 h-16 rounded-full items-center justify-center shadow-lg border-[3px] border-white"
@@ -159,6 +215,96 @@ export default function DashboardScreen({ navigation, route }) {
             >
                 <Ionicons name="add" size={32} color="white" />
             </TouchableOpacity>
+
+            {/* Profile Slide-up Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isProfileModalVisible}
+                onRequestClose={() => {
+                    setProfileModalVisible(false);
+                    setIsChangingPassword(false);
+                }}
+            >
+                <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+                    activeOpacity={1}
+                    onPress={() => {
+                        setProfileModalVisible(false);
+                        setIsChangingPassword(false);
+                    }}
+                >
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        style={{ backgroundColor: 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 }}
+                    >
+                        <View style={{ width: 40, height: 5, backgroundColor: '#e2e8f0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 }} />
+
+                        {!isChangingPassword ? (
+                            <>
+                                <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 24 }}>Account Settings</Text>
+
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}
+                                    onPress={() => setIsChangingPassword(true)}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="lock-closed-outline" size={20} color="#0f172a" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Change Password</Text>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16 }}
+                                    onPress={handleLogout}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', flex: 1 }}>Sign Out</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+                                    <TouchableOpacity onPress={() => setIsChangingPassword(false)} style={{ marginRight: 16 }}>
+                                        <Ionicons name="arrow-back" size={24} color="#0f172a" />
+                                    </TouchableOpacity>
+                                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Change Password</Text>
+                                </View>
+
+                                <TextInput
+                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }}
+                                    placeholder="Current Password"
+                                    secureTextEntry
+                                    value={oldPassword}
+                                    onChangeText={setOldPassword}
+                                />
+                                <TextInput
+                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }}
+                                    placeholder="New Password"
+                                    secureTextEntry
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                />
+
+                                <TouchableOpacity
+                                    style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 18, alignItems: 'center', opacity: isSubmittingPassword ? 0.7 : 1 }}
+                                    onPress={handleChangePassword}
+                                    disabled={isSubmittingPassword}
+                                >
+                                    {isSubmittingPassword ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Update Password</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
         </SafeAreaView>
     );
 }
