@@ -3,6 +3,8 @@ import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import JobBidsScreen from '../screens/JobBidsScreen';
+
 // Auth screens
 import LoginScreen from '../screens/LoginScreen';
 import ClientRegisterScreen from '../screens/ClientRegisterScreen';
@@ -83,6 +85,7 @@ export default function AppNavigator() {
             <Stack.Screen name="BidList" component={BidListScreen} />
             <Stack.Screen name="MyBids" component={MyBidsScreen} />
             <Stack.Screen name="EditBid" component={EditBidScreen} />
+            <Stack.Screen name="JobBids" component={JobBidsScreen} />
 
             {/* Portfolio Implementation */}
             <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
