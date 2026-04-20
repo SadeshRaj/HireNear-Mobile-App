@@ -4,6 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const upload = require('../middleware/upload');
+
 const { protect } = require('../middleware/auth');
 const {
     createJob,
@@ -16,31 +18,6 @@ const {
     updateJobStatus,
     deleteJob
 } = require('../controllers/jobController');
-
-// ─── Multer Setup (job images — local disk) ───────────────────────────────────
-const uploadDir = path.join(__dirname, '../../uploads/jobs');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        cb(null, `${unique}${path.extname(file.originalname)}`);
-    }
-});
-
-const upload = multer({
-    storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
-    fileFilter: (req, file, cb) => {
-        const allowed = /jpeg|jpg|png|webp/;
-        if (allowed.test(path.extname(file.originalname).toLowerCase().replace('.', ''))) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed'));
-        }
-    }
-});
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
