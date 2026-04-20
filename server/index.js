@@ -4,7 +4,7 @@ const cors = require('cors');
 const os = require('os'); // Import Node's OS module
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
-
+const bookingRoutes = require('./src/routes/bookingRoutes');
 const app = express();
 
 connectDB();
@@ -12,6 +12,7 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 const PORT = process.env.PORT || 5000;
 
