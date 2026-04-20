@@ -28,6 +28,17 @@ const formatDeadline = (d) => {
     return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+// Haversine distance (km) between two lat/lng points
+const calcDistanceKm = (lat1, lng1, lat2, lng2) => {
+    const toRad = v => (v * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export default function WorkerDashboardScreen({ navigation }) {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -162,11 +173,26 @@ export default function WorkerDashboardScreen({ navigation }) {
     const renderJob = ({ item }) => {
         const cat = getCatStyle(item.category);
 
+        // Calculate distance from worker's current location to job
+        let distKm = null;
+        if (workerLocation && item.location?.coordinates?.length === 2) {
+            const [jobLng, jobLat] = item.location.coordinates;
+            const d = calcDistanceKm(workerLocation.lat, workerLocation.lng, jobLat, jobLng);
+            distKm = isNaN(d) ? null : Math.round(d * 10) / 10;
+        }
+        const isNearby = distKm !== null && distKm < 5;
+
+        const distLabel = distKm === null ? null
+            : distKm < 1 ? `${Math.round(distKm * 1000)} m`
+            : `${distKm.toFixed(1)} km`;
+
         return (
             <View style={{
                 backgroundColor: 'white', borderRadius: 28, padding: 20, marginBottom: 16,
                 shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, borderWidth: 1, borderColor: '#f1f5f9',
+                shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+                borderWidth: isNearby ? 1.5 : 1,
+                borderColor: isNearby ? '#bbf7d0' : '#f1f5f9',
             }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -178,6 +204,17 @@ export default function WorkerDashboardScreen({ navigation }) {
                             <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600', marginTop: 2 }}>{item.category}</Text>
                         </View>
                     </View>
+                    {/* Distance badge */}
+                    {distLabel && (
+                        <View style={{
+                            backgroundColor: isNearby ? '#ecfdf5' : '#f8fafc',
+                            paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, marginLeft: 8,
+                        }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: isNearby ? '#047857' : '#64748b' }}>
+                                {isNearby ? '🔥' : '📍'} {distLabel}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -192,6 +229,11 @@ export default function WorkerDashboardScreen({ navigation }) {
                 )}
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    {isNearby ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ecfdf5', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>🔥 Nearby – High Priority</Text>
+                        </View>
+                    ) : <View />}
                     <TouchableOpacity
                         style={{ backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 }}
                         onPress={() => navigation.navigate('SubmitBid', { job: item })}
