@@ -1,15 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const { registerUser, verifyOTP, loginUser, changePassword, updateProfile } = require('../controllers/authController');
+const { protect } = require('../middleware/auth');
 
-// 1. Import BOTH functions from your controller
-const { registerUser, verifyOTP, loginUser } = require('../controllers/authController');
-
-// 2. Your existing register route
 router.post('/register', registerUser);
-
-// 3. THE MISSING ROUTE: Add the verify-otp route
 router.post('/verify-otp', verifyOTP);
-
 router.post('/login', loginUser);
+router.put('/change-password', protect, changePassword);
+router.put('/profile', protect, updateProfile); // New Profile Route
 
 module.exports = router;
