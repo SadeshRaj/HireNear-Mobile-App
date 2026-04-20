@@ -69,4 +69,4 @@ $RECYCLE.BIN/
 build/
 coverage/
 logs/
-*.log
+*.logserver/uploads/

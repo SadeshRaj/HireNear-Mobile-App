@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Location from 'expo-location';
 import { submitBid } from '../services/bidService';
 
 /**
@@ -49,12 +50,26 @@ export default function SubmitBidScreen({ navigation, route }) {
         setLoading(true);
         try {
             const jobCoordinates = job?.location?.coordinates || null;
+
+            // Get worker's current GPS for accurate distance calculation
+            let workerLat = null, workerLng = null;
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    workerLat = pos.coords.latitude;
+                    workerLng = pos.coords.longitude;
+                }
+            } catch { /* GPS optional — distance will be null */ }
+
             const result = await submitBid({
                 jobId: job._id,
                 price: Number(price),
                 message,
                 estimatedTime,
                 jobCoordinates,
+                workerLat,
+                workerLng,
                 files,
             });
             if (result._id) {

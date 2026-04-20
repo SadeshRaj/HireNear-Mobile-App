@@ -40,18 +40,24 @@ exports.submitBid = async (req, res) => {
             return res.status(400).json({ msg: 'You already have an active bid on this job' });
         }
 
-        // Calculate distance if both coords available
+        // Calculate distance if both job coords and worker's live GPS are available
         let distance = null;
         try {
             const parsedCoords = typeof jobCoordinates === 'string'
                 ? JSON.parse(jobCoordinates)
                 : jobCoordinates;
 
-            if (Array.isArray(parsedCoords) && req.user.location?.coordinates?.length === 2) {
-                const d = haversineDistance(req.user.location.coordinates, parsedCoords);
+            const workerLat = parseFloat(req.body.workerLat);
+            const workerLng = parseFloat(req.body.workerLng);
+
+            if (Array.isArray(parsedCoords) && parsedCoords.length === 2 && !isNaN(workerLat) && !isNaN(workerLng)) {
+                // GeoJSON coords are [lng, lat]; haversine expects same format
+                const workerCoords = [workerLng, workerLat];
+                const d = haversineDistance(workerCoords, parsedCoords);
                 distance = isNaN(d) ? null : Math.round(d * 10) / 10;
             }
         } catch { /* coords malformed — leave distance as null */ }
+
 
 
         // Collect uploaded file paths
