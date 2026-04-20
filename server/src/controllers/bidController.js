@@ -1,4 +1,5 @@
 const Bid = require('../models/Bid');
+const Job = require('../models/JobPost'); // <--- STEP 1: IMPORT THE JOB MODEL
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -195,6 +196,10 @@ exports.acceptBid = async (req, res) => {
         // Accept this bid
         bid.status = 'accepted';
         await bid.save();
+
+        // 2. STEP 2: UPDATE THE ACTUAL JOB POST STATUS
+        // This makes sure the job moves to the "Accepted" tab in your app
+        await Job.findByIdAndUpdate(bid.jobId, { status: 'accepted' });
 
         // Reject all other pending bids for the same job
         await Bid.updateMany(

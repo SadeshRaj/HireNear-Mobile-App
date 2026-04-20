@@ -214,3 +214,14 @@ exports.updateProfile = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
+
+// Example of the missing controller function
+exports.getWorkerById = async (req, res) => {
+    try {
+        const worker = await User.findById(req.params.workerId).select('name bio profileImage status');
+        if (!worker) return res.status(404).json({ msg: 'Worker not found' });
+        res.json(worker);
+    } catch (error) {
+        res.status(500).json({ msg: 'Server error' });
+    }
+};

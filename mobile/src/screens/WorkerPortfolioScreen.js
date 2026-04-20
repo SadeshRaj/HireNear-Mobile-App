@@ -13,7 +13,11 @@ import { API_BASE_URL } from '../../config';
 
 const { width } = Dimensions.get('window');
 
-export default function WorkerPortfolioScreen({ navigation }) {
+export default function WorkerPortfolioScreen({ route, navigation }) {
+    // Check if a workerId was passed via navigation
+    const workerId = route.params?.workerId;
+    const isOwnProfile = !workerId;
+
     const [user, setUser] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -51,39 +55,48 @@ export default function WorkerPortfolioScreen({ navigation }) {
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [workerId]);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const userJson = await AsyncStorage.getItem('user');
-            if (userJson) {
-                const parsedUser = JSON.parse(userJson);
-                setUser({
-                    ...parsedUser,
-                    bio: parsedUser.bio || "No bio added yet.",
-                    status: parsedUser.status || "Available",
-                    profileImage: parsedUser.profileImage || "https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback"
-                });
-            }
-            await fetchPortfolio();
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchPortfolio = async () => {
-        try {
             const token = await AsyncStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/portfolio`, {
+
+            // 1. Fetch Profile Data
+            if (workerId) {
+                // Fetch specific worker profile from API
+                const response = await fetch(`${API_BASE_URL}/auth/worker/${workerId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (response.ok) setUser(data);
+            } else {
+                // Fetch logged in user from local storage
+                const userJson = await AsyncStorage.getItem('user');
+                if (userJson) {
+                    const parsedUser = JSON.parse(userJson);
+                    setUser({
+                        ...parsedUser,
+                        bio: parsedUser.bio || "No bio added yet.",
+                        status: parsedUser.status || "Available",
+                        profileImage: parsedUser.profileImage || "https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback"
+                    });
+                }
+            }
+
+            // 2. Fetch Portfolio Items
+            const portfolioUrl = workerId ? `${API_BASE_URL}/portfolio/${workerId}` : `${API_BASE_URL}/portfolio`;
+            const response = await fetch(portfolioUrl, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await response.json();
             if (response.ok) setItems(data);
+
         } catch (error) {
+            console.error(error);
             showToast('Network error', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -120,7 +133,7 @@ export default function WorkerPortfolioScreen({ navigation }) {
         if (status !== 'granted') return showToast('Camera roll permissions required!', 'error');
 
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'], // Fixed deprecated warning
+            mediaTypes: ['images'],
             allowsMultipleSelection: true,
             selectionLimit: 5,
             quality: 0.7,
@@ -164,7 +177,7 @@ export default function WorkerPortfolioScreen({ navigation }) {
             if (response.ok) {
                 showToast(editingItemId ? 'Project updated!' : 'Project added!', 'success');
                 setIsFormVisible(false);
-                fetchPortfolio();
+                loadData(); // Re-fetch data
             } else {
                 showToast('Upload failed', 'error');
             }
@@ -185,7 +198,6 @@ export default function WorkerPortfolioScreen({ navigation }) {
             setMapRegion({ ...currentLoc, latitudeDelta: 0.05, longitudeDelta: 0.05 });
             setTempPinLocation(currentLoc);
         } else {
-            // Default to Colombo, Sri Lanka
             const colombo = { latitude: 6.9271, longitude: 79.8612 };
             setMapRegion({ ...colombo, latitudeDelta: 0.1, longitudeDelta: 0.1 });
             setTempPinLocation(colombo);
@@ -224,13 +236,9 @@ export default function WorkerPortfolioScreen({ navigation }) {
                 style={{ flex: 1, aspectRatio: 1, margin: 6, borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#f1f5f9' }}
             >
                 <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} />
-
-                {/* Gradient-like overlay for title visibility */}
                 <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 10, paddingTop: 20, backgroundColor: 'rgba(0,0,0,0.4)' }}>
                     <Text style={{ color: 'white', fontSize: 13, fontWeight: '700' }} numberOfLines={1}>{item.title}</Text>
                 </View>
-
-                {/* Multiple images indicator */}
                 {item.images && item.images.length > 1 && (
                     <View style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.5)', padding: 4, borderRadius: 8 }}>
                         <Ionicons name="images" size={14} color="white" />
@@ -259,7 +267,6 @@ export default function WorkerPortfolioScreen({ navigation }) {
                         <TextInput style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0' }} placeholder="Project Title" value={title} onChangeText={setTitle} />
                         <TextInput style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', height: 100, textAlignVertical: 'top' }} placeholder="Description..." multiline value={description} onChangeText={setDescription} />
 
-                        {/* Interactive Location Picker Trigger */}
                         <TouchableOpacity
                             onPress={openMapModal}
                             style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center' }}
@@ -320,10 +327,11 @@ export default function WorkerPortfolioScreen({ navigation }) {
 
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
                                     <Text style={{ color: '#475569', fontSize: 14, textAlign: 'center', fontStyle: 'italic' }}>"{user?.bio}"</Text>
-                                    <TouchableOpacity onPress={() => { setEditBio(user?.bio); setEditStatus(user?.status); setProfileModalVisible(true); }} style={{ marginLeft: 8 }}>
-                                        {/* Fixed icon warning here */}
-                                        <Ionicons name="pencil" size={20} color="#64748b" style={{ padding: 4, backgroundColor: '#f1f5f9', borderRadius: 12 }} />
-                                    </TouchableOpacity>
+                                    {isOwnProfile && (
+                                        <TouchableOpacity onPress={() => { setEditBio(user?.bio); setEditStatus(user?.status); setProfileModalVisible(true); }} style={{ marginLeft: 8 }}>
+                                            <Ionicons name="pencil" size={20} color="#64748b" style={{ padding: 4, backgroundColor: '#f1f5f9', borderRadius: 12 }} />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             </View>
                         }
@@ -331,43 +339,44 @@ export default function WorkerPortfolioScreen({ navigation }) {
                         ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 40, color: '#94a3b8' }}>No portfolio projects yet.</Text>}
                     />
 
-                    <TouchableOpacity
-                        style={{ position: 'absolute', bottom: 30, right: 20, backgroundColor: '#0f172a', width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 }}
-                        onPress={openAddForm}
-                    >
-                        <Ionicons name="add" size={32} color="white" />
-                    </TouchableOpacity>
+                    {isOwnProfile && (
+                        <TouchableOpacity
+                            style={{ position: 'absolute', bottom: 30, right: 20, backgroundColor: '#0f172a', width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 }}
+                            onPress={openAddForm}
+                        >
+                            <Ionicons name="add" size={32} color="white" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             )}
 
-            {/* Lightbox / Instagram Image Viewer Modal */}
+            {/* Lightbox / Image Viewer */}
             <Modal visible={!!selectedItem} transparent animationType="fade">
                 <View style={{ flex: 1, backgroundColor: 'black' }}>
-                    {/* Header Controls */}
                     <SafeAreaView>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10 }}>
                             <TouchableOpacity onPress={() => setSelectedItem(null)} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}>
                                 <Ionicons name="close" size={24} color="white" />
                             </TouchableOpacity>
-                            {/* Deletion control inside the lightbox */}
-                            <TouchableOpacity onPress={() => {
-                                const idToDelete = selectedItem._id;
-                                setSelectedItem(null);
-                                Alert.alert("Delete", "Remove this project?", [
-                                    { text: "Cancel", style: "cancel" },
-                                    { text: "Delete", style: "destructive", onPress: async () => {
-                                            const token = await AsyncStorage.getItem('token');
-                                            await fetch(`${API_BASE_URL}/portfolio/${idToDelete}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-                                            setItems(items.filter(i => i._id !== idToDelete));
-                                        }}
-                                ]);
-                            }} style={{ padding: 8 }}>
-                                <Ionicons name="trash-outline" size={24} color="#ef4444" />
-                            </TouchableOpacity>
+                            {isOwnProfile && (
+                                <TouchableOpacity onPress={() => {
+                                    const idToDelete = selectedItem._id;
+                                    setSelectedItem(null);
+                                    Alert.alert("Delete", "Remove this project?", [
+                                        { text: "Cancel", style: "cancel" },
+                                        { text: "Delete", style: "destructive", onPress: async () => {
+                                                const token = await AsyncStorage.getItem('token');
+                                                await fetch(`${API_BASE_URL}/portfolio/${idToDelete}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+                                                setItems(items.filter(i => i._id !== idToDelete));
+                                            }}
+                                    ]);
+                                }} style={{ padding: 8 }}>
+                                    <Ionicons name="trash-outline" size={24} color="#ef4444" />
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </SafeAreaView>
 
-                    {/* Swipeable Images */}
                     <View style={{ flex: 1, justifyContent: 'center' }}>
                         {selectedItem?.images && (
                             <ScrollView
@@ -386,7 +395,6 @@ export default function WorkerPortfolioScreen({ navigation }) {
                                 ))}
                             </ScrollView>
                         )}
-                        {/* Image Counter */}
                         {selectedItem?.images?.length > 1 && (
                             <View style={{ position: 'absolute', top: 20, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
                                 <Text style={{ color: 'white', fontWeight: '700', fontSize: 12 }}>
@@ -396,7 +404,6 @@ export default function WorkerPortfolioScreen({ navigation }) {
                         )}
                     </View>
 
-                    {/* Bottom Info Area */}
                     <SafeAreaView edges={['bottom']}>
                         <View style={{ padding: 20, backgroundColor: 'rgba(0,0,0,0.8)' }}>
                             <Text style={{ color: 'white', fontSize: 18, fontWeight: '800', marginBottom: 8 }}>{selectedItem?.title}</Text>
@@ -412,7 +419,7 @@ export default function WorkerPortfolioScreen({ navigation }) {
                 </View>
             </Modal>
 
-            {/* Interactive Map Modal */}
+            {/* Map Modal */}
             <Modal visible={isMapVisible} animationType="slide">
                 <View style={{ flex: 1 }}>
                     <View style={{ position: 'absolute', top: 50, left: 20, zIndex: 10, right: 20, flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -423,27 +430,11 @@ export default function WorkerPortfolioScreen({ navigation }) {
                             <Text style={{ color: 'white', fontWeight: '700' }}>Confirm Location</Text>
                         </TouchableOpacity>
                     </View>
-
                     {mapRegion && (
-                        <MapView
-                            style={{ flex: 1 }}
-                            initialRegion={mapRegion}
-                            onPress={(e) => setTempPinLocation(e.nativeEvent.coordinate)}
-                        >
-                            {tempPinLocation && (
-                                <Marker
-                                    draggable
-                                    coordinate={tempPinLocation}
-                                    onDragEnd={(e) => setTempPinLocation(e.nativeEvent.coordinate)}
-                                />
-                            )}
+                        <MapView style={{ flex: 1 }} initialRegion={mapRegion} onPress={(e) => setTempPinLocation(e.nativeEvent.coordinate)}>
+                            {tempPinLocation && <Marker draggable coordinate={tempPinLocation} onDragEnd={(e) => setTempPinLocation(e.nativeEvent.coordinate)} />}
                         </MapView>
                     )}
-
-                    <View style={{ position: 'absolute', bottom: 40, left: 20, right: 20, backgroundColor: 'white', padding: 20, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: {width:0, height:4} }}>
-                        <Text style={{ fontWeight: '800', fontSize: 16, color: '#0f172a', marginBottom: 4 }}>Drag the pin</Text>
-                        <Text style={{ color: '#64748b', fontSize: 13 }}>Place the marker exactly where the job took place.</Text>
-                    </View>
                 </View>
             </Modal>
 
@@ -452,7 +443,6 @@ export default function WorkerPortfolioScreen({ navigation }) {
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
                     <View style={{ backgroundColor: 'white', padding: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32 }}>
                         <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20 }}>Edit Profile</Text>
-
                         <Text style={{ fontWeight: '700', color: '#475569', marginBottom: 8 }}>Current Status</Text>
                         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
                             {['Available', 'Working', 'Offline'].map(status => (
@@ -461,10 +451,8 @@ export default function WorkerPortfolioScreen({ navigation }) {
                                 </TouchableOpacity>
                             ))}
                         </View>
-
                         <Text style={{ fontWeight: '700', color: '#475569', marginBottom: 8 }}>About Me</Text>
                         <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, height: 100, textAlignVertical: 'top', marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0' }} multiline value={editBio} onChangeText={setEditBio} />
-
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                             <TouchableOpacity style={{ flex: 1, padding: 16, borderRadius: 20, backgroundColor: '#f1f5f9', alignItems: 'center' }} onPress={() => setProfileModalVisible(false)}>
                                 <Text style={{ fontWeight: '700', color: '#475569' }}>Cancel</Text>
