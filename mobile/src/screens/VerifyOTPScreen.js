@@ -34,9 +34,17 @@ export default function VerifyOTPScreen({ route, navigation }) {
             console.log("Backend Response:", response.status, data);
 
             if (response.ok) {
-                // Navigate seamlessly on success instead of halting with an alert
-                navigation.replace('Dashboard');
-                navigation.replace('MainTabs', { user: data.user });
+                // Save the token and user locally so they are actually logged in
+                const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                if (data.token) await AsyncStorage.setItem('token', data.token);
+                if (data.user) await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+                // Check role and navigate to the right dashboard
+                if (data.user?.role === 'Worker') {
+                    navigation.replace('WorkerDashboard', { user: data.user });
+                } else {
+                    navigation.replace('Dashboard', { user: data.user });
+                }
             } else {
                 showError(data.msg || data.error || "Something went wrong.");
             }
