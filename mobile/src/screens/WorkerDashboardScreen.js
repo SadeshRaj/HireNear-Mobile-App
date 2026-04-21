@@ -44,6 +44,7 @@ export default function WorkerDashboardScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
+    const [activeDistance, setActiveDistance] = useState(20);
     const [workerName, setWorkerName] = useState('there');
     const [workerLocation, setWorkerLocation] = useState(null);
 
@@ -88,11 +89,11 @@ export default function WorkerDashboardScreen({ navigation }) {
             const token = await AsyncStorage.getItem('token');
             let url;
 
-            if (workerLocation) {
-                url = `${API_BASE_URL}/jobs/nearby?lat=${workerLocation.lat}&lng=${workerLocation.lng}&maxDistanceKm=15`;
+            if (workerLocation && activeDistance !== 'All') {
+                url = `${API_BASE_URL}/jobs/nearby?lat=${workerLocation.lat}&lng=${workerLocation.lng}&maxDistanceKm=${activeDistance}`;
                 if (activeCategory !== 'All') url += `&category=${activeCategory}`;
             } else {
-                url = `${API_BASE_URL}/jobs`;
+                url = `${API_BASE_URL}/jobs`; // Uses getOpenJobs logic which returns all jobs
                 if (activeCategory !== 'All') url += `?category=${activeCategory}`;
             }
 
@@ -112,7 +113,7 @@ export default function WorkerDashboardScreen({ navigation }) {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [workerLocation, activeCategory]);
+    }, [workerLocation, activeCategory, activeDistance]);
 
     useEffect(() => {
         setLoading(true);
@@ -283,17 +284,44 @@ export default function WorkerDashboardScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 16,
                     paddingHorizontal: 16, paddingVertical: 11, borderWidth: 1, borderColor: '#f1f5f9',
                 }}>
-                    <Ionicons name="location" size={16} color={workerLocation ? '#047857' : '#94a3b8'} />
-                    <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: workerLocation ? '#047857' : '#94a3b8' }}>
-                        {workerLocation ? '🔥 Showing jobs near you (within 15 km)' : 'Showing all open jobs'}
+                    <Ionicons name="location" size={16} color={workerLocation && activeDistance !== 'All' ? '#047857' : '#94a3b8'} />
+                    <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: workerLocation && activeDistance !== 'All' ? '#047857' : '#94a3b8' }}>
+                        {workerLocation && activeDistance !== 'All' ? `🔥 Showing jobs near you (within ${activeDistance} km)` : 'Showing all open jobs'}
                     </Text>
                 </View>
             </View>
+
+            {workerLocation && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '800', marginRight: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Radius</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingRight: 20 }}>
+                        {[5, 10, 20, 'All'].map(dist => {
+                            const label = dist === 'All' ? 'Anywhere' : `${dist} km`;
+                            const isActive = activeDistance === dist;
+                            return (
+                                <TouchableOpacity
+                                    key={dist.toString()}
+                                    onPress={() => setActiveDistance(dist)}
+                                    style={{
+                                        marginRight: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
+                                        backgroundColor: isActive ? '#059669' : '#f8fafc',
+                                        borderWidth: 1, borderColor: isActive ? '#059669' : '#e2e8f0'
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? 'white' : '#64748b' }}>
+                                        {label}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        })}
+                    </ScrollView>
+                </View>
+            )}
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
                 {CATEGORIES.map(cat => (
