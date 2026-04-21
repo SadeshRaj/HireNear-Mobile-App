@@ -102,7 +102,19 @@ exports.verifyOTP = async (req, res) => {
 
         await user.save();
 
-        res.status(200).json({ msg: 'Account verified successfully' });
+        const payload = {
+            user: { id: user.id }
+        };
+
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' },
+            (err, token) => {
+                if (err) throw err;
+                res.status(200).json({ msg: 'Account verified successfully', token, user });
+            }
+        );
     } catch (err) {
         console.error("Verification Error:", err.message);
         res.status(500).json({ error: 'Server error' });
