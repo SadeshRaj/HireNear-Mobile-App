@@ -31,14 +31,22 @@ exports.getMyBookings = async (req, res) => {
 };
 
 // Update status (e.g., Pending -> In Progress -> Completed)
+// Update Booking Status (e.g., Worker marks job as "Completed")
 exports.updateBookingStatus = async (req, res) => {
     try {
         const { status } = req.body;
+        const bookingId = req.params.id;
+
         const updatedBooking = await Booking.findByIdAndUpdate(
-            req.params.id,
+            bookingId,
             { status },
-            { new: true }
+            { new: true } // Returns the updated document
         );
+
+        if (!updatedBooking) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+
         res.status(200).json(updatedBooking);
     } catch (error) {
         res.status(500).json({ message: "Update failed", error: error.message });
