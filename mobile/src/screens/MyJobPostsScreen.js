@@ -16,7 +16,7 @@ export default function MyJobPostsScreen({ navigation, route }) {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState('open'); // NEW: State for tabs
+    const [activeTab, setActiveTab] = useState('open');
 
     const fetchMyJobs = async () => {
         if (!userId) {
@@ -106,75 +106,92 @@ export default function MyJobPostsScreen({ navigation, route }) {
         }
     };
 
-    const renderItem = ({ item }) => (
-        <View className="bg-white rounded-3xl p-5 mb-4 shadow-sm border border-gray-100">
-            <View className="flex-row justify-between items-start mb-3">
-                <View className="flex-1">
-                    <Text className="text-lg font-bold text-slate-900">{item.title}</Text>
-                    <Text className="text-slate-500 font-medium text-xs mt-1">
-                        {item.category} • {new Date(item.createdAt).toLocaleDateString()}
-                    </Text>
+    const renderItem = ({ item }) => {
+        const isAccepted = item.status === 'accepted';
+
+        return (
+            <View className="bg-white rounded-3xl p-5 mb-4 shadow-sm border border-gray-100">
+                <View className="flex-row justify-between items-start mb-3">
+                    <View className="flex-1">
+                        <Text className="text-lg font-bold text-slate-900">{item.title}</Text>
+                        <Text className="text-slate-500 font-medium text-xs mt-1">
+                            {item.category} • {new Date(item.createdAt).toLocaleDateString()}
+                        </Text>
+                    </View>
+
+                    {!isAccepted && (
+                        <TouchableOpacity
+                            onPress={() => toggleStatus(item._id, item.status)}
+                            className={`px-3 py-1 rounded-full flex-row items-center ${item.status === 'open' ? 'bg-emerald-50' : 'bg-rose-50'}`}
+                        >
+                            <View className={`w-1.5 h-1.5 rounded-full mr-2 ${item.status === 'open' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <Text className={`text-[10px] font-bold uppercase ${item.status === 'open' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                {item.status}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {isAccepted && (
+                        <View className="bg-emerald-100 px-3 py-1 rounded-full">
+                            <Text className="text-[10px] font-bold uppercase text-emerald-700">In Progress</Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* Only allow status toggle if it's 'open' or 'closed' */}
-                {item.status !== 'accepted' && (
+                <View className="flex-row gap-8 mb-4">
+                    <View>
+                        <Text className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Budget</Text>
+                        <Text className="text-slate-900 font-extrabold text-lg">Rs. {item.budget?.toLocaleString()}</Text>
+                    </View>
+                    <View>
+                        <Text className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Bids</Text>
+                        <Text className="text-slate-900 font-extrabold text-lg">{item.bidCount || 0}</Text>
+                    </View>
+                </View>
+
+                <View className="flex-row gap-2 border-t border-gray-50 pt-4">
+                    {/* UPDATED: Primary Action Button Logic */}
                     <TouchableOpacity
-                        onPress={() => toggleStatus(item._id, item.status)}
-                        className={`px-3 py-1 rounded-full flex-row items-center ${item.status === 'open' ? 'bg-emerald-50' : 'bg-rose-50'}`}
+                        className={`flex-1 flex-row justify-center items-center py-2.5 rounded-xl ${isAccepted ? 'bg-emerald-600' : 'bg-slate-900'}`}
+                        onPress={() => {
+                            if (isAccepted) {
+                                // Navigate to the new Booking Details Screen
+                                navigation.navigate('BookingDetails', { jobId: item._id, jobTitle: item.title });
+                            } else {
+                                navigation.navigate('JobBids', { jobId: item._id, jobTitle: item.title });
+                            }
+                        }}
                     >
-                        <View className={`w-1.5 h-1.5 rounded-full mr-2 ${item.status === 'open' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        <Text className={`text-[10px] font-bold uppercase ${item.status === 'open' ? 'text-emerald-700' : 'text-rose-700'}`}>
-                            {item.status}
+                        {isAccepted && <MaterialCommunityIcons name="progress-clock" size={16} color="white" style={{ marginRight: 6 }} />}
+                        <Text className="text-white text-xs font-bold">
+                            {isAccepted ? 'Track Progress' : 'View Bids'}
                         </Text>
                     </TouchableOpacity>
-                )}
-            </View>
 
-            <View className="flex-row gap-8 mb-4">
-                <View>
-                    <Text className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Budget</Text>
-                    <Text className="text-slate-900 font-extrabold text-lg">Rs. {item.budget?.toLocaleString()}</Text>
+                    {/* Edit/Delete only for non-accepted jobs */}
+                    {!isAccepted && (
+                        <>
+                            <TouchableOpacity
+                                className="flex-1 bg-slate-100 flex-row justify-center items-center py-2.5 rounded-xl"
+                                onPress={() => navigation.navigate('CreateJob', { editJob: item })}
+                            >
+                                <Ionicons name="pencil" size={14} color="#475569" />
+                                <Text className="text-slate-600 text-xs font-bold ml-1">Edit</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className="w-12 bg-rose-50 justify-center items-center py-2.5 rounded-xl"
+                                onPress={() => handleDelete(item._id)}
+                            >
+                                <Ionicons name="trash-outline" size={18} color="#e11d48" />
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
-                <View>
-                    <Text className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Bids</Text>
-                    <Text className="text-slate-900 font-extrabold text-lg">{item.bidCount || 0}</Text>
-                </View>
             </View>
+        );
+    };
 
-            <View className="flex-row gap-2 border-t border-gray-50 pt-4">
-                {/* View Bids logic - Hide if already accepted */}
-                <TouchableOpacity
-                    className={`flex-1 flex-row justify-center items-center py-2.5 rounded-xl ${item.status === 'accepted' ? 'bg-emerald-600' : 'bg-slate-900'}`}
-                    onPress={() => navigation.navigate('JobBids', { jobId: item._id, jobTitle: item.title })}
-                >
-                    <Text className="text-white text-xs font-bold">
-                        {item.status === 'accepted' ? 'View Hired Worker' : 'View Bids'}
-                    </Text>
-                </TouchableOpacity>
-
-                {item.status !== 'accepted' && (
-                    <>
-                        <TouchableOpacity
-                            className="flex-1 bg-slate-100 flex-row justify-center items-center py-2.5 rounded-xl"
-                            onPress={() => navigation.navigate('CreateJob', { editJob: item })}
-                        >
-                            <Ionicons name="pencil" size={14} color="#475569" />
-                            <Text className="text-slate-600 text-xs font-bold ml-1">Edit</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            className="w-12 bg-rose-50 justify-center items-center py-2.5 rounded-xl"
-                            onPress={() => handleDelete(item._id)}
-                        >
-                            <Ionicons name="trash-outline" size={18} color="#e11d48" />
-                        </TouchableOpacity>
-                    </>
-                )}
-            </View>
-        </View>
-    );
-
-    // Logic to filter jobs based on selected tab
     const filteredJobs = jobs.filter(job => {
         if (activeTab === 'open') return job.status === 'open' || job.status === 'closed';
         return job.status === 'accepted';
@@ -195,7 +212,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                 </TouchableOpacity>
             </View>
 
-            {/* TAB SWITCHER */}
             <View className="flex-row bg-white p-1 rounded-2xl mb-4 border border-slate-100">
                 <TouchableOpacity
                     onPress={() => setActiveTab('open')}

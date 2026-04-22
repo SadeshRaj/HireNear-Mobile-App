@@ -10,6 +10,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const bidRoutes = require('./src/routes/bidRoutes');
 const jobRoutes = require('./src/routes/jobRoutes');
 const portfolioRoutes = require('./src/routes/portfolioRoutes'); // New Route
+const bookingRoutes = require('./src/routes/bookingRoutes');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bids', bidRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/portfolio', portfolioRoutes); // Mount Portfolio
+app.use('/api/bookings', bookingRoutes);
 
 const PORT = process.env.PORT || 4000;
 

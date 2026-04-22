@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import JobBidsScreen from '../screens/JobBidsScreen';
 
+import BookingDetailsScreen from '../screens/BookingDetailsScreen';
+
 // Auth screens
 import LoginScreen from '../screens/LoginScreen';
 import ClientRegisterScreen from '../screens/ClientRegisterScreen';
@@ -86,6 +88,8 @@ export default function AppNavigator() {
             <Stack.Screen name="MyBids" component={MyBidsScreen} />
             <Stack.Screen name="EditBid" component={EditBidScreen} />
             <Stack.Screen name="JobBids" component={JobBidsScreen} />
+
+            <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
 
             {/* Portfolio Implementation */}
             <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
