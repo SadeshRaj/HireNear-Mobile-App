@@ -28,11 +28,23 @@ const formatDeadline = (d) => {
     return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+// Haversine distance (km) between two lat/lng points
+const calcDistanceKm = (lat1, lng1, lat2, lng2) => {
+    const toRad = v => (v * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export default function WorkerDashboardScreen({ navigation }) {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
+    const [activeDistance, setActiveDistance] = useState(20);
     const [workerName, setWorkerName] = useState('there');
     const [workerLocation, setWorkerLocation] = useState(null);
 
@@ -77,11 +89,11 @@ export default function WorkerDashboardScreen({ navigation }) {
             const token = await AsyncStorage.getItem('token');
             let url;
 
-            if (workerLocation) {
-                url = `${API_BASE_URL}/jobs/nearby?lat=${workerLocation.lat}&lng=${workerLocation.lng}&maxDistanceKm=15`;
+            if (workerLocation && activeDistance !== 'All') {
+                url = `${API_BASE_URL}/jobs/nearby?lat=${workerLocation.lat}&lng=${workerLocation.lng}&maxDistanceKm=${activeDistance}`;
                 if (activeCategory !== 'All') url += `&category=${activeCategory}`;
             } else {
-                url = `${API_BASE_URL}/jobs`;
+                url = `${API_BASE_URL}/jobs`; // Uses getOpenJobs logic which returns all jobs
                 if (activeCategory !== 'All') url += `?category=${activeCategory}`;
             }
 
@@ -101,7 +113,7 @@ export default function WorkerDashboardScreen({ navigation }) {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [workerLocation, activeCategory]);
+    }, [workerLocation, activeCategory, activeDistance]);
 
     useEffect(() => {
         setLoading(true);
@@ -162,11 +174,26 @@ export default function WorkerDashboardScreen({ navigation }) {
     const renderJob = ({ item }) => {
         const cat = getCatStyle(item.category);
 
+        // Calculate distance from worker's current location to job
+        let distKm = null;
+        if (workerLocation && item.location?.coordinates?.length === 2) {
+            const [jobLng, jobLat] = item.location.coordinates;
+            const d = calcDistanceKm(workerLocation.lat, workerLocation.lng, jobLat, jobLng);
+            distKm = isNaN(d) ? null : Math.round(d * 10) / 10;
+        }
+        const isNearby = distKm !== null && distKm < 5;
+
+        const distLabel = distKm === null ? null
+            : distKm < 1 ? `${Math.round(distKm * 1000)} m`
+            : `${distKm.toFixed(1)} km`;
+
         return (
             <View style={{
                 backgroundColor: 'white', borderRadius: 28, padding: 20, marginBottom: 16,
                 shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, borderWidth: 1, borderColor: '#f1f5f9',
+                shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+                borderWidth: isNearby ? 1.5 : 1,
+                borderColor: isNearby ? '#bbf7d0' : '#f1f5f9',
             }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -178,6 +205,17 @@ export default function WorkerDashboardScreen({ navigation }) {
                             <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600', marginTop: 2 }}>{item.category}</Text>
                         </View>
                     </View>
+                    {/* Distance badge */}
+                    {distLabel && (
+                        <View style={{
+                            backgroundColor: isNearby ? '#ecfdf5' : '#f8fafc',
+                            paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, marginLeft: 8,
+                        }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: isNearby ? '#047857' : '#64748b' }}>
+                                {isNearby ? '🔥' : '📍'} {distLabel}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -192,6 +230,11 @@ export default function WorkerDashboardScreen({ navigation }) {
                 )}
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    {isNearby ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ecfdf5', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>🔥 Nearby – High Priority</Text>
+                        </View>
+                    ) : <View />}
                     <TouchableOpacity
                         style={{ backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 }}
                         onPress={() => navigation.navigate('SubmitBid', { job: item })}
@@ -241,17 +284,44 @@ export default function WorkerDashboardScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 16,
                     paddingHorizontal: 16, paddingVertical: 11, borderWidth: 1, borderColor: '#f1f5f9',
                 }}>
-                    <Ionicons name="location" size={16} color={workerLocation ? '#047857' : '#94a3b8'} />
-                    <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: workerLocation ? '#047857' : '#94a3b8' }}>
-                        {workerLocation ? '🔥 Showing jobs near you (within 15 km)' : 'Showing all open jobs'}
+                    <Ionicons name="location" size={16} color={workerLocation && activeDistance !== 'All' ? '#047857' : '#94a3b8'} />
+                    <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: workerLocation && activeDistance !== 'All' ? '#047857' : '#94a3b8' }}>
+                        {workerLocation && activeDistance !== 'All' ? `🔥 Showing jobs near you (within ${activeDistance} km)` : 'Showing all open jobs'}
                     </Text>
                 </View>
             </View>
+
+            {workerLocation && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '800', marginRight: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Radius</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingRight: 20 }}>
+                        {[5, 10, 20, 'All'].map(dist => {
+                            const label = dist === 'All' ? 'Anywhere' : `${dist} km`;
+                            const isActive = activeDistance === dist;
+                            return (
+                                <TouchableOpacity
+                                    key={dist.toString()}
+                                    onPress={() => setActiveDistance(dist)}
+                                    style={{
+                                        marginRight: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
+                                        backgroundColor: isActive ? '#059669' : '#f8fafc',
+                                        borderWidth: 1, borderColor: isActive ? '#059669' : '#e2e8f0'
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? 'white' : '#64748b' }}>
+                                        {label}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        })}
+                    </ScrollView>
+                </View>
+            )}
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
                 {CATEGORIES.map(cat => (

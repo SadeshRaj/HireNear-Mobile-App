@@ -78,7 +78,19 @@ exports.getMyJobs = async (req, res) => {
 exports.getMyJobsByUserId = async (req, res) => {
     try {
         const jobs = await JobPost.find({ clientId: req.params.userId }).sort({ createdAt: -1 });
-        res.status(200).json({ success: true, jobs });
+
+        // Calculate bid count for each job
+        const jobsWithBidCount = await Promise.all(
+            jobs.map(async (job) => {
+                const bidCount = await Bid.countDocuments({
+                    jobId: job._id,
+                    status: { $ne: 'withdrawn' }
+                });
+                return { ...job.toObject(), bidCount };
+            })
+        );
+
+        res.status(200).json({ success: true, jobs: jobsWithBidCount });
     } catch (err) {
         console.error('getMyJobsByUserId error:', err.message);
         res.status(500).json({ success: false, message: 'Error fetching jobs' });

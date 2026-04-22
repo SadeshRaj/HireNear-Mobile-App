@@ -102,7 +102,19 @@ exports.verifyOTP = async (req, res) => {
 
         await user.save();
 
-        res.status(200).json({ msg: 'Account verified successfully' });
+        const payload = {
+            user: { id: user.id }
+        };
+
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' },
+            (err, token) => {
+                if (err) throw err;
+                res.status(200).json({ msg: 'Account verified successfully', token, user });
+            }
+        );
     } catch (err) {
         console.error("Verification Error:", err.message);
         res.status(500).json({ error: 'Server error' });
@@ -212,5 +224,16 @@ exports.updateProfile = async (req, res) => {
     } catch (err) {
         console.error('Update Profile Error:', err.message);
         res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// Example of the missing controller function
+exports.getWorkerById = async (req, res) => {
+    try {
+        const worker = await User.findById(req.params.workerId).select('name bio profileImage status');
+        if (!worker) return res.status(404).json({ msg: 'Worker not found' });
+        res.json(worker);
+    } catch (error) {
+        res.status(500).json({ msg: 'Server error' });
     }
 };
