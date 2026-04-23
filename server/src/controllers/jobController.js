@@ -1,5 +1,28 @@
 const JobPost = require('../models/JobPost');
 const Bid = require('../models/Bid');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Helper function to upload buffer to Cloudinary
+const uploadToCloudinary = (fileBuffer) => {
+    return new Promise((resolve, reject) => {
+        let stream = cloudinary.uploader.upload_stream(
+            { folder: 'job_images' },
+            (error, result) => {
+                if (result) resolve(result.secure_url);
+                else reject(error);
+            }
+        );
+        streamifier.createReadStream(fileBuffer).pipe(stream);
+    });
+};
 
 // ─── POST /api/jobs ──────────────────────────────────────────────────────────
 // Client creates a new job (with optional image uploads)
@@ -28,7 +51,10 @@ exports.createJob = async (req, res) => {
             return res.status(400).json({ msg: 'clientId is required' });
         }
 
-        const images = req.files ? req.files.map(f => f.path) : [];
+        let images = [];
+        if (req.files && req.files.length > 0) {
+            images = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+        }
 
         const job = new JobPost({
             clientId: resolvedClientId,
@@ -189,7 +215,8 @@ exports.updateJob = async (req, res) => {
         if (deadline) job.deadline = new Date(deadline);
 
         if (req.files && req.files.length > 0) {
-            job.images.push(...req.files.map(f => f.path));
+            const newImageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+            job.images.push(...newImageUrls);
         }
 
         await job.save();

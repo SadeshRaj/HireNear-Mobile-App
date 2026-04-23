@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const os = require('os');
+const cloudinary = require('cloudinary').v2;
 const connectDB = require('./src/config/db');
 
 // Import Routes
@@ -10,8 +11,16 @@ const authRoutes = require('./src/routes/authRoutes');
 const bidRoutes = require('./src/routes/bidRoutes');
 const jobRoutes = require('./src/routes/jobRoutes');
 const portfolioRoutes = require('./src/routes/portfolioRoutes'); // New Route
+const bookingRoutes = require('./src/routes/bookingRoutes');
 
 const app = express();
+
+// --- CLOUDINARY CONFIG ---
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME, // Changed to match your .env
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Connect to MongoDB
 connectDB();
@@ -28,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bids', bidRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/portfolio', portfolioRoutes); // Mount Portfolio
+app.use('/api/bookings', bookingRoutes);
 
 const PORT = process.env.PORT || 4000;
 
