@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const os = require('os');
+const cloudinary = require('cloudinary').v2;
 const connectDB = require('./src/config/db');
 
 // Import Routes
@@ -13,6 +14,13 @@ const portfolioRoutes = require('./src/routes/portfolioRoutes'); // New Route
 const bookingRoutes = require('./src/routes/bookingRoutes');
 
 const app = express();
+
+// --- CLOUDINARY CONFIG ---
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME, // Changed to match your .env
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Connect to MongoDB
 connectDB();
