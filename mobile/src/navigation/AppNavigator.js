@@ -26,6 +26,9 @@ import EditBidScreen from '../screens/EditBidScreen';
 
 // Portfolio Screen
 import WorkerPortfolioScreen from '../screens/WorkerPortfolioScreen';
+//invoice
+import CreateInvoiceScreen from '../screens/CreateInvoiceScreen';
+import InvoiceDetailsScreen from '../screens/InvoiceDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -87,6 +90,10 @@ export default function AppNavigator() {
             <Stack.Screen name="WorkerBookingDetails" component={WorkerBookingDetailsScreen} />
 
             <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
+
+            {/* Updated Invoice Screens */}
+            <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
+            <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen} />
         </Stack.Navigator>
     );
 }
