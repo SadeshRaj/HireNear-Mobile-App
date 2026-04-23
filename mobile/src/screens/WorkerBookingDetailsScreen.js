@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect } from '@react-navigation/native';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -14,6 +15,7 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [invoiceExists, setInvoiceExists] = useState(false);
 
     const isMounted = useRef(true);
 
@@ -29,7 +31,27 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await response.json();
-            if (isMounted.current && data.success) setBooking(data.booking);
+
+            if (isMounted.current && data.success) {
+                setBooking(data.booking);
+
+                // If job is completed, check if invoice is already generated
+                if (data.booking.status === 'completed') {
+                    try {
+                        const invRes = await fetch(`${API_BASE_URL}/invoices/booking/${data.booking._id}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        if (invRes.ok) {
+                            const invData = await invRes.json();
+                            if (invData.success && invData.invoice) {
+                                setInvoiceExists(true);
+                            }
+                        }
+                    } catch (e) {
+                        console.log("Invoice check error (ignored):", e);
+                    }
+                }
+            }
         } catch (error) {
             if (isMounted.current) Alert.alert("Error", "Failed to load details");
         } finally {
@@ -37,11 +59,16 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
         }
     }, [jobId]);
 
-    useEffect(() => { fetchBookingDetails(); }, [fetchBookingDetails]);
+    // This ensures data refreshes automatically when returning from CreateInvoiceScreen
+    useFocusEffect(
+        useCallback(() => {
+            setLoading(true);
+            fetchBookingDetails();
+        }, [fetchBookingDetails])
+    );
 
     const handleUploadProof = async () => {
         try {
-            console.log("1. Button clicked, requesting permissions...");
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (permissionResult.status !== 'granted') {
@@ -49,7 +76,6 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 return;
             }
 
-            console.log("2. Permission granted, opening picker...");
             let result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ['images'],
                 allowsMultipleSelection: true,
@@ -61,9 +87,7 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 const formData = new FormData();
 
                 result.assets.forEach((asset, index) => {
-                    // Now Platform.OS will work correctly
                     const uri = Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri;
-
                     formData.append('images', {
                         uri: uri,
                         name: `proof_${index}.jpg`,
@@ -72,24 +96,18 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 });
 
                 const token = await AsyncStorage.getItem('token');
-
-                console.log("4. Starting API upload...");
                 const res = await fetch(`${API_BASE_URL}/bookings/${booking._id}/upload-proof`, {
                     method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
                     body: formData
                 });
 
                 const responseText = await res.text();
-                console.log("5. Raw Server Response:", responseText);
-
                 let data;
                 try {
                     data = JSON.parse(responseText);
                 } catch (parseError) {
-                    throw new Error("Server returned HTML instead of JSON. Check the console log above!");
+                    throw new Error("Server error processing image upload.");
                 }
 
                 if (isMounted.current) {
@@ -102,10 +120,7 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 }
             }
         } catch (err) {
-            console.log("Error in handleUploadProof:", err);
-            if (isMounted.current) {
-                Alert.alert("Upload Error", err.message || "Something went wrong.");
-            }
+            if (isMounted.current) Alert.alert("Upload Error", err.message || "Something went wrong.");
         } finally {
             if (isMounted.current) setUploading(false);
         }
@@ -129,7 +144,6 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
         }
     };
 
-    // UI Helper for Status
     const getStatusUI = (status) => {
         switch (status) {
             case 'pending': return { bg: 'bg-amber-50', text: 'text-amber-600', icon: 'time', label: 'Pending Approval' };
@@ -151,7 +165,6 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
-            {/* Header */}
             <View className="px-5 py-4 flex-row items-center bg-white border-b border-gray-100 shadow-sm">
                 <TouchableOpacity
                     onPress={() => navigation.goBack()}
@@ -163,8 +176,6 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
             </View>
 
             <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}>
-
-                {/* Status Card */}
                 <View className="bg-white p-5 rounded-2xl mb-5 border border-gray-100 shadow-sm">
                     <Text className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-3">Current Status</Text>
                     <View className={`flex-row items-center self-start px-4 py-2 rounded-xl ${statusUI.bg}`}>
@@ -175,7 +186,6 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                     </View>
                 </View>
 
-                {/* Evidence Section */}
                 <View className="bg-white p-5 rounded-2xl mb-6 border border-gray-100 shadow-sm">
                     <View className="flex-row items-center mb-4">
                         <Ionicons name="camera-outline" size={22} color="#334155" />
@@ -217,7 +227,6 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 </View>
             </ScrollView>
 
-            {/* Bottom Fixed Action Bar */}
             <View className="p-5 bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 {booking?.status === 'pending' && (
                     <TouchableOpacity onPress={() => updateStatus('scheduled')} className="bg-slate-900 p-4 rounded-xl flex-row justify-center items-center">
@@ -241,9 +250,29 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 )}
 
                 {booking?.status === 'completed' && (
-                    <View className="bg-slate-100 p-4 rounded-xl flex-row justify-center items-center">
-                        <Ionicons name="lock-closed" size={20} color="#64748b" />
-                        <Text className="text-slate-500 text-lg font-bold ml-2">Job Finished</Text>
+                    <View className="gap-3">
+                        {!invoiceExists ? (
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('CreateInvoice', { bookingId: booking._id, clientName: booking.clientId?.name || 'Client' })}
+                                className="bg-indigo-600 p-4 rounded-xl flex-row justify-center items-center shadow-sm"
+                            >
+                                <Ionicons name="document-text" size={22} color="white" />
+                                <Text className="text-white text-lg font-bold ml-2">Generate Invoice</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('InvoiceDetails', { bookingId: booking._id, role: 'worker' })}
+                                className="bg-emerald-600 p-4 rounded-xl flex-row justify-center items-center shadow-sm"
+                            >
+                                <Ionicons name="receipt" size={22} color="white" />
+                                <Text className="text-white text-lg font-bold ml-2">View Invoice</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        <View className="bg-slate-100 p-4 rounded-xl flex-row justify-center items-center border border-slate-200">
+                            <Ionicons name="lock-closed" size={20} color="#64748b" />
+                            <Text className="text-slate-500 text-lg font-bold ml-2">Job Finished</Text>
+                        </View>
                     </View>
                 )}
             </View>

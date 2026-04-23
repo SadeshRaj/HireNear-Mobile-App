@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert
 } from 'react-native';
@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageView from "react-native-image-viewing";
+import { useFocusEffect } from '@react-navigation/native';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const STATUS_STEPS = ['pending', 'scheduled', 'in-progress', 'completed'];
@@ -16,7 +17,6 @@ export default function BookingDetailsScreen({ route, navigation }) {
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Image Viewer State
     const [visible, setVisible] = useState(false);
     const [currentImages, setCurrentImages] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -45,9 +45,12 @@ export default function BookingDetailsScreen({ route, navigation }) {
         }
     }, [jobId]);
 
-    useEffect(() => {
-        fetchBookingDetails();
-    }, [fetchBookingDetails]);
+    // This ensures data refreshes automatically when returning back
+    useFocusEffect(
+        useCallback(() => {
+            fetchBookingDetails();
+        }, [fetchBookingDetails])
+    );
 
     const updateBookingStatus = async (status) => {
         const alertMsg = status === 'cancelled' ? "Are you sure you want to cancel?" : "Mark this job as finished?";
@@ -95,7 +98,6 @@ export default function BookingDetailsScreen({ route, navigation }) {
 
     if (!booking) return null;
 
-    // Helper to render image grids
     const ImageGrid = ({ images, title, placeholder }) => (
         <View className="mb-6">
             <Text className="font-bold text-slate-800 mb-3">{title}</Text>
@@ -120,7 +122,6 @@ export default function BookingDetailsScreen({ route, navigation }) {
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
-            {/* Header */}
             <View className="px-5 pt-4 pb-4 flex-row items-center bg-white border-b border-gray-100">
                 <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-gray-50 rounded-full">
                     <Ionicons name="arrow-back" size={20} color="#000" />
@@ -134,8 +135,6 @@ export default function BookingDetailsScreen({ route, navigation }) {
             </View>
 
             <ScrollView className="p-5" showsVerticalScrollIndicator={false}>
-
-                {/* Visual Stepper */}
                 <View className="bg-white p-6 rounded-3xl mb-5 shadow-sm border border-gray-100">
                     <Text className="font-bold text-slate-800 mb-4">Job Progress</Text>
                     <View className="flex-row justify-between items-center">
@@ -162,16 +161,12 @@ export default function BookingDetailsScreen({ route, navigation }) {
                     </View>
                 </View>
 
-                {/* Evidence Section */}
                 <View className="bg-white p-6 rounded-3xl mb-5 shadow-sm border border-gray-100">
-                    {/* Before Photos (From original Job Post) */}
                     <ImageGrid
                         title="Before Fix (Original Report)"
                         images={booking.jobId?.attachments || booking.jobId?.images}
                         placeholder="No original images provided"
                     />
-
-                    {/* After Photos (From Booking/Worker upload) */}
                     <ImageGrid
                         title="After Fix (Worker's Proof)"
                         images={booking.attachments}
@@ -179,7 +174,6 @@ export default function BookingDetailsScreen({ route, navigation }) {
                     />
                 </View>
 
-                {/* Action Controls */}
                 <View className="mb-10">
                     {booking.status === 'in-progress' && (
                         <TouchableOpacity
@@ -190,7 +184,6 @@ export default function BookingDetailsScreen({ route, navigation }) {
                         </TouchableOpacity>
                     )}
 
-                    {/* Client can ONLY cancel if the work hasn't started yet */}
                     {(booking.status === 'pending' || booking.status === 'scheduled') && (
                         <TouchableOpacity
                             onPress={() => updateBookingStatus('cancelled')}
@@ -201,8 +194,17 @@ export default function BookingDetailsScreen({ route, navigation }) {
                     )}
 
                     {booking.status === 'completed' && (
-                        <View className="bg-green-50 p-4 rounded-2xl border border-green-100">
-                            <Text className="text-green-700 text-center font-bold">Job Completed Successfully</Text>
+                        <View className="gap-3">
+                            <View className="bg-green-50 p-4 rounded-2xl border border-green-100">
+                                <Text className="text-green-700 text-center font-bold">Job Completed Successfully</Text>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('InvoiceDetails', { bookingId: booking._id, role: 'client' })}
+                                className="bg-slate-900 p-4 rounded-2xl shadow-md"
+                            >
+                                <Text className="text-white text-center font-bold text-base">View Invoice & Pay</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>
