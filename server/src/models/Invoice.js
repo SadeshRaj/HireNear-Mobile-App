@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const invoiceItemSchema = new mongoose.Schema({
     description: { type: String, required: true },
-    amount: { type: Number, required: true }
+    amount: { type: Number, required: true },
+    isFixed: { type: Boolean, default: false } // NEW: Locks the price and prevents deletion
 });
 
 const invoiceSchema = new mongoose.Schema({
@@ -13,7 +14,7 @@ const invoiceSchema = new mongoose.Schema({
     totalAmount: { type: Number, required: true },
     paymentSlipUrl: { type: String, default: null },
     status: { type: String, enum: ['pending', 'verifying', 'paid'], default: 'pending' },
-    isUpdated: { type: Boolean, default: false } // NEW: Tracks if the invoice was edited
+    isUpdated: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);
