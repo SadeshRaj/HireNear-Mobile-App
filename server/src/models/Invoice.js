@@ -12,8 +12,8 @@ const invoiceSchema = new mongoose.Schema({
     items: [invoiceItemSchema],
     totalAmount: { type: Number, required: true },
     paymentSlipUrl: { type: String, default: null },
-    // ADDED: 'verifying' state for the two-step payment approval
-    status: { type: String, enum: ['pending', 'verifying', 'paid'], default: 'pending' }
+    status: { type: String, enum: ['pending', 'verifying', 'paid'], default: 'pending' },
+    isUpdated: { type: Boolean, default: false } // NEW: Tracks if the invoice was edited
 }, { timestamps: true });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

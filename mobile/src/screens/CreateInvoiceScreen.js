@@ -7,8 +7,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function CreateInvoiceScreen({ route, navigation }) {
-    const { bookingId } = route.params;
-    const [items, setItems] = useState([]);
+    const { bookingId, agreedPrice } = route.params;
+
+    // NEW: Initialize with agreed price if it exists
+    const [items, setItems] = useState(agreedPrice ? [{ description: 'Agreed Job Price', amount: parseFloat(agreedPrice) }] : []);
     const [desc, setDesc] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
@@ -18,6 +20,11 @@ export default function CreateInvoiceScreen({ route, navigation }) {
         setItems([...items, { description: desc, amount: parseFloat(amount) }]);
         setDesc('');
         setAmount('');
+    };
+
+    // NEW: Delete individual row before saving
+    const handleDeleteItem = (index) => {
+        setItems(items.filter((_, i) => i !== index));
     };
 
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
@@ -34,7 +41,6 @@ export default function CreateInvoiceScreen({ route, navigation }) {
             });
             const data = await res.json();
             if (data.success) {
-                // Navigate to the native view screen instead of downloading immediately
                 navigation.replace('InvoiceDetails', { bookingId, role: 'worker' });
             } else {
                 Alert.alert("Error", data.msg);
@@ -76,19 +82,22 @@ export default function CreateInvoiceScreen({ route, navigation }) {
                     </TouchableOpacity>
                 </View>
 
-                {/* Native Table Preview */}
-                <View className="border border-slate-200 rounded-xl overflow-hidden mb-2 bg-white flex-1">
+                {/* Native Table Preview with Delete Icons */}
+                <View className="border border-slate-200 rounded-xl overflow-hidden mb-2 bg-white flex-1 shadow-sm">
                     <View className="flex-row bg-slate-100 p-3 border-b border-slate-200">
                         <Text className="flex-1 font-bold text-slate-700">Description</Text>
-                        <Text className="w-24 font-bold text-slate-700 text-right">Amount</Text>
+                        <Text className="w-24 font-bold text-slate-700 text-right pr-6">Amount</Text>
                     </View>
                     <FlatList
                         data={items}
                         keyExtractor={(_, i) => i.toString()}
-                        renderItem={({ item }) => (
-                            <View className="flex-row p-3 border-b border-slate-100">
+                        renderItem={({ item, index }) => (
+                            <View className="flex-row items-center p-3 border-b border-slate-50">
                                 <Text className="flex-1 text-slate-600">{item.description}</Text>
-                                <Text className="w-24 text-slate-800 text-right font-medium">LKR {item.amount}</Text>
+                                <Text className="w-24 text-slate-800 text-right font-medium mr-3">LKR {item.amount}</Text>
+                                <TouchableOpacity onPress={() => handleDeleteItem(index)} className="p-1 bg-red-50 rounded-md">
+                                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                                </TouchableOpacity>
                             </View>
                         )}
                     />
