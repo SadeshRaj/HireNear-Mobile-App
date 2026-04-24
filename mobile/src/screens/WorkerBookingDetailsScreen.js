@@ -252,8 +252,13 @@ export default function WorkerBookingDetailsScreen({ route, navigation }) {
                 {booking?.status === 'completed' && (
                     <View className="gap-3">
                         {!invoiceExists ? (
+                            // Replace the old CreateInvoice button with this block:
                             <TouchableOpacity
-                                onPress={() => navigation.navigate('CreateInvoice', { bookingId: booking._id, clientName: booking.clientId?.name || 'Client' })}
+                                onPress={() => navigation.navigate('CreateInvoice', {
+                                    bookingId: booking._id,
+                                    clientName: booking.clientId?.name || 'Client',
+                                    agreedPrice: booking.price // NEW: Passing the accepted bid amount
+                                })}
                                 className="bg-indigo-600 p-4 rounded-xl flex-row justify-center items-center shadow-sm"
                             >
                                 <Ionicons name="document-text" size={22} color="white" />
