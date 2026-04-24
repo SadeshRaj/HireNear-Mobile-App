@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import JobBidsScreen from '../screens/JobBidsScreen';
+import BookingDetailsScreen from '../screens/BookingDetailsScreen';
+import WorkerBookingDetailsScreen from '../screens/WorkerBookingDetailsScreen';
 
 // Auth screens
 import LoginScreen from '../screens/LoginScreen';
@@ -24,13 +26,16 @@ import EditBidScreen from '../screens/EditBidScreen';
 
 // Portfolio Screen
 import WorkerPortfolioScreen from '../screens/WorkerPortfolioScreen';
+//invoice
+import CreateInvoiceScreen from '../screens/CreateInvoiceScreen';
+import InvoiceDetailsScreen from '../screens/InvoiceDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
     const [isLoading, setIsLoading] = useState(true);
     const [initialRoute, setInitialRoute] = useState('Login');
-    const [initialParams, setInitialParams] = useState(null);
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
         const checkLoginState = async () => {
@@ -39,18 +44,12 @@ export default function AppNavigator() {
                 const userJson = await AsyncStorage.getItem('user');
                 const rememberMe = await AsyncStorage.getItem('rememberMe');
 
-                if (token && userJson) {
-                    if (rememberMe === 'true') {
-                        const user = JSON.parse(userJson);
-                        setInitialParams({ user });
-                        if (user.role === 'Worker') {
-                            setInitialRoute('WorkerDashboard');
-                        } else {
-                            setInitialRoute('Dashboard');
-                        }
-                    } else {
-                        await AsyncStorage.multiRemove(['token', 'user', 'rememberMe']);
-                    }
+                if (token && userJson && rememberMe === 'true') {
+                    const userData = JSON.parse(userJson);
+                    setUser(userData);
+                    setInitialRoute(userData.role === 'Worker' ? 'WorkerDashboard' : 'Dashboard');
+                } else if (rememberMe !== 'true') {
+                    await AsyncStorage.multiRemove(['token', 'user', 'rememberMe']);
                 }
             } catch (error) {
                 console.error("Failed to check login state", error);
@@ -76,10 +75,10 @@ export default function AppNavigator() {
             <Stack.Screen name="WorkerRegister" component={WorkerRegisterScreen} />
             <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
 
-            <Stack.Screen name="Dashboard" component={MainTabNavigator} initialParams={initialParams} />
+            <Stack.Screen name="Dashboard" component={MainTabNavigator} initialParams={{ user }} />
             <Stack.Screen name="CreateJob" component={CreateJobScreen} />
 
-            <Stack.Screen name="WorkerDashboard" component={WorkerTabNavigator} initialParams={initialParams} />
+            <Stack.Screen name="WorkerDashboard" component={WorkerTabNavigator} initialParams={{ user }} />
 
             <Stack.Screen name="SubmitBid" component={SubmitBidScreen} />
             <Stack.Screen name="BidList" component={BidListScreen} />
@@ -87,8 +86,14 @@ export default function AppNavigator() {
             <Stack.Screen name="EditBid" component={EditBidScreen} />
             <Stack.Screen name="JobBids" component={JobBidsScreen} />
 
-            {/* Portfolio Implementation */}
+            <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
+            <Stack.Screen name="WorkerBookingDetails" component={WorkerBookingDetailsScreen} />
+
             <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
+
+            {/* Updated Invoice Screens */}
+            <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
+            <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen} />
         </Stack.Navigator>
     );
 }

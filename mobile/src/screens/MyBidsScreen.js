@@ -151,14 +151,28 @@ export default function MyBidsScreen({ navigation }) {
                     contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                    renderItem={({ item }) => (
-                        <BidCard
-                            bid={item}
-                            mode="worker"
-                            onEdit={handleEdit}
-                            onWithdraw={handleWithdraw}
-                        />
-                    )}
+                    renderItem={({ item }) => {
+                        const isAccepted = item.status === 'accepted';
+                        return (
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                disabled={!isAccepted}
+                                onPress={() => {
+                                    navigation.navigate('WorkerBookingDetails', {
+                                        jobId: item.jobId._id,
+                                        jobTitle: item.jobId.title
+                                    });
+                                }}
+                            >
+                                <BidCard
+                                    bid={item}
+                                    mode="worker"
+                                    onEdit={handleEdit}
+                                    onWithdraw={handleWithdraw}
+                                />
+                            </TouchableOpacity>
+                        );
+                    }}
                 />
             )}
         </SafeAreaView>
