@@ -9,31 +9,26 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 export default function CreateInvoiceScreen({ route, navigation }) {
     const { bookingId, agreedPrice } = route.params;
 
-    // Initialize with agreed price locked via 'isFixed'
     const [items, setItems] = useState(agreedPrice ? [{ description: 'Agreed Job Price', amount: parseFloat(agreedPrice), isFixed: true }] : []);
     const [desc, setDesc] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // State to track if we are currently editing an existing row
     const [editingIndex, setEditingIndex] = useState(null);
 
     const handleAddOrUpdateItem = () => {
         if (!desc || !amount) return Alert.alert("Hold up", "Please enter both a description and an amount.");
 
         if (editingIndex !== null) {
-            // Update existing item
             const updatedItems = [...items];
             updatedItems[editingIndex] = {
                 ...updatedItems[editingIndex],
                 description: desc,
-                // Only update the amount if it's NOT the fixed bid price
                 amount: updatedItems[editingIndex].isFixed ? updatedItems[editingIndex].amount : parseFloat(amount)
             };
             setItems(updatedItems);
             setEditingIndex(null);
         } else {
-            // Add new item
             setItems([...items, { description: desc, amount: parseFloat(amount), isFixed: false }]);
         }
 
@@ -82,7 +77,6 @@ export default function CreateInvoiceScreen({ route, navigation }) {
         }
     };
 
-    // Determine if the currently editing item is the fixed base price
     const isEditingFixedItem = editingIndex !== null && items[editingIndex].isFixed;
 
     return (
@@ -112,7 +106,7 @@ export default function CreateInvoiceScreen({ route, navigation }) {
                         value={amount}
                         onChangeText={setAmount}
                         keyboardType="numeric"
-                        editable={!isEditingFixedItem} // Disable amount input if it's the fixed bid
+                        editable={!isEditingFixedItem}
                         className={`bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200 ${isEditingFixedItem ? 'opacity-50 bg-slate-100' : ''}`}
                     />
                     {isEditingFixedItem && (
@@ -133,12 +127,11 @@ export default function CreateInvoiceScreen({ route, navigation }) {
                     </View>
                 </View>
 
-                {/* Native Table Preview */}
                 <View className="border border-slate-200 rounded-xl overflow-hidden mb-2 bg-white flex-1 shadow-sm">
                     <View className="flex-row bg-slate-100 p-3 border-b border-slate-200 items-center">
                         <Text className="flex-1 font-bold text-slate-700">Description</Text>
                         <Text className="w-24 font-bold text-slate-700 text-right pr-2">Amount</Text>
-                        <View className="w-16" /> {/* Placeholder for action icons */}
+                        <View className="w-16" />
                     </View>
 
                     <FlatList
@@ -154,13 +147,12 @@ export default function CreateInvoiceScreen({ route, navigation }) {
                                         <Ionicons name="pencil" size={16} color="#3b82f6" />
                                     </TouchableOpacity>
 
-                                    {/* Hide delete button if it's the fixed initial bid */}
                                     {!item.isFixed ? (
                                         <TouchableOpacity onPress={() => handleDeleteItem(index)} className="p-2 bg-red-50 rounded-md">
                                             <Ionicons name="trash-outline" size={16} color="#ef4444" />
                                         </TouchableOpacity>
                                     ) : (
-                                        <View className="w-[32px] p-2" /> // Empty placeholder to keep alignment perfect
+                                        <View className="w-[32px] p-2" />
                                     )}
                                 </View>
                             </View>
@@ -175,7 +167,7 @@ export default function CreateInvoiceScreen({ route, navigation }) {
 
                 <TouchableOpacity
                     onPress={submitInvoice}
-                    disabled={loading || editingIndex !== null} // Prevent submit while editing an item
+                    disabled={loading || editingIndex !== null}
                     className={`p-4 rounded-2xl items-center mt-2 ${loading || editingIndex !== null ? 'bg-indigo-400' : 'bg-indigo-600'}`}
                 >
                     {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-white text-lg font-bold">Save Invoice</Text>}
