@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Dimensions,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { API_BASE_URL } from '../../config';
 
 const { width } = Dimensions.get('window');
@@ -17,16 +18,24 @@ export default function DashboardScreen({ navigation, route }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const flatListRef = useRef(null);
 
-    // Get the user object from route params
-    const user = route?.params?.user;
-    const firstName = user?.name ? user.name.split(' ')[0] : 'Guest';
+    // Keep track of the user locally to instantly update UI
+    const [currentUser, setCurrentUser] = useState(route?.params?.user || {});
+    const firstName = currentUser?.name ? currentUser.name.split(' ')[0] : 'Guest';
 
     // Modal & Profile States
     const [isProfileModalVisible, setProfileModalVisible] = useState(false);
+
+    // Change Password States
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+    // Edit Profile States
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editName, setEditName] = useState(currentUser?.name || '');
+    const [editProfileImage, setEditProfileImage] = useState(currentUser?.profileImage || '');
+    const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -47,7 +56,7 @@ export default function DashboardScreen({ navigation, route }) {
         try {
             await AsyncStorage.removeItem('token');
             await AsyncStorage.removeItem('user');
-            await AsyncStorage.removeItem('rememberMe'); // Clear remember me preference
+            await AsyncStorage.removeItem('rememberMe');
             setProfileModalVisible(false);
             navigation.replace('Login');
         } catch (error) {
@@ -90,6 +99,72 @@ export default function DashboardScreen({ navigation, route }) {
         }
     };
 
+    const pickProfileImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to upload an image.');
+            return;
+        }
+
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            setEditProfileImage(result.assets[0].uri);
+        }
+    };
+
+    const handleUpdateProfile = async () => {
+        if (!editName.trim()) {
+            Alert.alert("Error", "Name cannot be empty");
+            return;
+        }
+
+        setIsSubmittingProfile(true);
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const formData = new FormData();
+            formData.append('name', editName);
+
+            // Only append the image if it's a new local URI (not the existing Cloudinary URL)
+            if (editProfileImage && !editProfileImage.startsWith('http')) {
+                const filename = editProfileImage.split('/').pop();
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : `image/jpeg`;
+                formData.append('profileImage', { uri: editProfileImage, name: filename, type });
+            }
+
+            const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                const updatedUser = { ...currentUser, name: data.user.name, profileImage: data.user.profileImage };
+                setCurrentUser(updatedUser);
+                await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+
+                Alert.alert('Success', 'Profile updated successfully!');
+                setIsEditingProfile(false);
+            } else {
+                Alert.alert('Error', data.msg || 'Failed to update profile');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Network error during upload');
+        } finally {
+            setIsSubmittingProfile(false);
+        }
+    };
+
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -112,10 +187,17 @@ export default function DashboardScreen({ navigation, route }) {
                             <Text className="text-slate-700 font-bold ml-2">29°</Text>
                         </View>
                         <TouchableOpacity
-                            className="bg-white p-2.5 rounded-full shadow-sm border border-gray-100"
-                            onPress={() => setProfileModalVisible(true)}
+                            className="bg-white p-1 rounded-full shadow-sm border border-gray-100"
+                            onPress={() => {
+                                setEditName(currentUser?.name);
+                                setEditProfileImage(currentUser?.profileImage);
+                                setProfileModalVisible(true);
+                            }}
                         >
-                            <Ionicons name="person" size={20} color="#64748b" />
+                            <Image
+                                source={{ uri: currentUser?.profileImage || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback' }}
+                                style={{ width: 36, height: 36, borderRadius: 18 }}
+                            />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -201,13 +283,13 @@ export default function DashboardScreen({ navigation, route }) {
                 <View className="h-20" />
             </ScrollView>
 
-            {/* FAB: Passes the userId to CreateJob screen */}
+            {/* FAB */}
             <TouchableOpacity
                 style={{ position: 'absolute', bottom: 25, right: 25 }}
                 className="bg-slate-900 w-16 h-16 rounded-full items-center justify-center shadow-lg border-[3px] border-white"
                 onPress={() => {
-                    if (user?._id || user?.id) {
-                        navigation.navigate('CreateJob', { userId: user._id || user.id });
+                    if (currentUser?._id || currentUser?.id) {
+                        navigation.navigate('CreateJob', { userId: currentUser._id || currentUser.id });
                     } else {
                         Alert.alert("Error", "User session not found. Please log in again.");
                     }
@@ -224,6 +306,7 @@ export default function DashboardScreen({ navigation, route }) {
                 onRequestClose={() => {
                     setProfileModalVisible(false);
                     setIsChangingPassword(false);
+                    setIsEditingProfile(false);
                 }}
             >
                 <TouchableOpacity
@@ -232,6 +315,7 @@ export default function DashboardScreen({ navigation, route }) {
                     onPress={() => {
                         setProfileModalVisible(false);
                         setIsChangingPassword(false);
+                        setIsEditingProfile(false);
                     }}
                 >
                     <TouchableOpacity
@@ -240,32 +324,48 @@ export default function DashboardScreen({ navigation, route }) {
                     >
                         <View style={{ width: 40, height: 5, backgroundColor: '#e2e8f0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 }} />
 
-                        {!isChangingPassword ? (
+                        {isEditingProfile ? (
                             <>
-                                <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 24 }}>Account Settings</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+                                    <TouchableOpacity onPress={() => setIsEditingProfile(false)} style={{ marginRight: 16 }}>
+                                        <Ionicons name="arrow-back" size={24} color="#0f172a" />
+                                    </TouchableOpacity>
+                                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Edit Profile</Text>
+                                </View>
+
+                                <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                                    <TouchableOpacity onPress={pickProfileImage} style={{ position: 'relative' }}>
+                                        <Image
+                                            source={{ uri: editProfileImage || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback' }}
+                                            style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#f1f5f9' }}
+                                        />
+                                        <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: '#0f172a', padding: 8, borderRadius: 20, borderWidth: 2, borderColor: 'white' }}>
+                                            <Ionicons name="camera" size={16} color="white" />
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <Text style={{ fontWeight: '700', color: '#475569', marginBottom: 8, marginLeft: 4 }}>Full Name</Text>
+                                <TextInput
+                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }}
+                                    placeholder="Your Name"
+                                    value={editName}
+                                    onChangeText={setEditName}
+                                />
 
                                 <TouchableOpacity
-                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}
-                                    onPress={() => setIsChangingPassword(true)}
+                                    style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 18, alignItems: 'center', opacity: isSubmittingProfile ? 0.7 : 1 }}
+                                    onPress={handleUpdateProfile}
+                                    disabled={isSubmittingProfile}
                                 >
-                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                                        <Ionicons name="lock-closed-outline" size={20} color="#0f172a" />
-                                    </View>
-                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Change Password</Text>
-                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16 }}
-                                    onPress={handleLogout}
-                                >
-                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                                        <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-                                    </View>
-                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', flex: 1 }}>Sign Out</Text>
+                                    {isSubmittingProfile ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Save Changes</Text>
+                                    )}
                                 </TouchableOpacity>
                             </>
-                        ) : (
+                        ) : isChangingPassword ? (
                             <>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
                                     <TouchableOpacity onPress={() => setIsChangingPassword(false)} style={{ marginRight: 16 }}>
@@ -299,6 +399,42 @@ export default function DashboardScreen({ navigation, route }) {
                                     ) : (
                                         <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Update Password</Text>
                                     )}
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 24 }}>Account Settings</Text>
+
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}
+                                    onPress={() => setIsEditingProfile(true)}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="person-outline" size={20} color="#0f172a" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Edit Profile</Text>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}
+                                    onPress={() => setIsChangingPassword(true)}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="lock-closed-outline" size={20} color="#0f172a" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Change Password</Text>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16 }}
+                                    onPress={handleLogout}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', flex: 1 }}>Sign Out</Text>
                                 </TouchableOpacity>
                             </>
                         )}
