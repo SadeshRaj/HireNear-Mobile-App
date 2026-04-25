@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { completeBooking } from '../services/bookingService';
 
 const CompleteJobScreen = ({ route, navigation }) => {
-    // Check if params exists, if not, try to get from route.params directly
+    // Get bookingId from navigation params
     const bookingId = route.params?.bookingId;
     const [image, setImage] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -27,7 +27,7 @@ const CompleteJobScreen = ({ route, navigation }) => {
 
         try {
             let result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: 'images',
+                mediaTypes: ImagePicker.MediaTypeOptions.Images, // Updated to latest expo syntax
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 0.7,
@@ -49,33 +49,38 @@ const CompleteJobScreen = ({ route, navigation }) => {
         try {
             const formData = new FormData();
 
-            // UNIVERSAL URI FIX:
-            // Android needs the raw uri, iOS needs the file:// prefix removed.
             const localUri = image.uri;
             const filename = localUri.split('/').pop();
 
-            // Match type from the result asset if possible, otherwise default to jpeg
+            // Detect mime type
             const match = /\.(\w+)$/.exec(filename);
             const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-            formData.append('completionImages', {
+            /**
+             * KEY FIX: The key must be 'attachments' to match:
+             * upload.array('attachments', 5) in bookingRoutes.js
+             */
+            formData.append('attachments', {
                 uri: Platform.OS === 'ios' ? localUri.replace('file://', '') : localUri,
-                name: filename || `proof_${bookingId}.jpg`,
+                name: filename || `completion_${bookingId}.jpg`,
                 type: type,
             });
 
-            console.log("📤 Sending FormData to backend...");
+            console.log(`📤 Sending completion proof for Booking: ${bookingId}`);
 
             await completeBooking(bookingId, formData);
 
-            Alert.alert("Success", "Job marked as completed!", [
+            Alert.alert("Success", "Job marked as completed successfully!", [
                 { text: "OK", onPress: () => navigation.goBack() }
             ]);
         } catch (error) {
-            // Detailed logging to find the culprit
-            console.error("Detailed Error:", error.response?.data || error.message);
-            const msg = error.response?.data?.msg || "Server rejected the request.";
-            Alert.alert("Upload Failed", msg);
+            console.error("Upload Error Details:", error.response?.data || error.message);
+
+            // Check specifically for Multer Unexpected Field error
+            const serverMsg = error.response?.data?.msg || error.response?.data?.details;
+            const errorAlert = serverMsg ? serverMsg : "The server rejected the photo. Check field names.";
+
+            Alert.alert("Upload Failed", errorAlert);
         } finally {
             setUploading(false);
         }
@@ -90,6 +95,7 @@ const CompleteJobScreen = ({ route, navigation }) => {
 
             <TouchableOpacity
                 onPress={pickImage}
+                activeOpacity={0.7}
                 style={[styles.imagePlaceholder, image && styles.imageSelected]}
             >
                 {image ? (
@@ -117,7 +123,11 @@ const CompleteJobScreen = ({ route, navigation }) => {
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelLink}>
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={styles.cancelLink}
+                    disabled={uploading}
+                >
                     <Text style={styles.cancelLinkText}>Cancel & Go Back</Text>
                 </TouchableOpacity>
             </View>
@@ -125,7 +135,6 @@ const CompleteJobScreen = ({ route, navigation }) => {
     );
 };
 
-// ... (Styles remain the same)
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 24, backgroundColor: '#ffffff' },
     headerSection: { marginBottom: 30, marginTop: 40 },

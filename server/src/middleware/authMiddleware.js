@@ -1,21 +1,22 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User'); // Import your User model
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
     let token;
 
-    // Check if the request has an Authorization header starting with "Bearer"
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
-            // Get token from header (Format: "Bearer <token>")
             token = req.headers.authorization.split(' ')[1];
 
-            // Verify token using the secret key
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_temporary_secret_key');
 
-            // Attach the user info (id, role, etc.) to the request object
-            // This is what allows your req.user.id to work in the Booking controller!
-            // Change this line:
-            req.user = decoded; // Instead of decoded.user
+            // --- THE CRITICAL FIX ---
+            // Fetch the user from DB so req.user._id exists and matches MongoDB's format
+            req.user = await User.findById(decoded.id).select('-password');
+
+            if (!req.user) {
+                return res.status(401).json({ msg: 'User not found' });
+            }
 
             next();
         } catch (error) {
@@ -29,7 +30,6 @@ const protect = (req, res, next) => {
     }
 };
 
-// Middleware to check for Admin roles (Useful for managing all bookings)
 const adminOnly = (req, res, next) => {
     if (req.user && req.user.role === 'Admin') {
         next();

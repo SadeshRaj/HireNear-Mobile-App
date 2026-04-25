@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import StatusBadge from './StatusBadge';
 import { cancelBooking } from '../services/bookingService';
 
-// Added onViewProof to the props destructuring
 const BookingCard = ({ booking, onAction, currentUser, onRefresh, onViewProof }) => {
     // 1. User Role Detection
     const currentId = String(currentUser?.id || currentUser?._id || "");
@@ -43,8 +42,9 @@ const BookingCard = ({ booking, onAction, currentUser, onRefresh, onViewProof })
             {/* --- TOP SECTION --- */}
             <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1 mr-2">
+                    {/* Fixed to check both jobId and jobID cases */}
                     <Text className="text-lg font-bold text-gray-900 leading-6">
-                        {booking.jobID?.title || 'Job Details'}
+                        {booking.jobId?.title || booking.jobID?.title || 'Job Details'}
                     </Text>
                     <Text className="text-gray-500 text-sm mt-1">
                         {isWorker
@@ -68,8 +68,11 @@ const BookingCard = ({ booking, onAction, currentUser, onRefresh, onViewProof })
                     {!isWorker && (
                         <TouchableOpacity
                             onPress={() => {
-                                const imageUrl = booking.completionImages?.[0];
-                                if (onViewProof) onViewProof(imageUrl);
+                                // FIX: Match the backend 'attachments' field name
+                                const imageUrl = booking.attachments?.[0];
+                                if (onViewProof) {
+                                    onViewProof(imageUrl);
+                                }
                             }}
                             className="bg-blue-600 py-3 rounded-lg items-center mt-3 shadow-sm"
                         >

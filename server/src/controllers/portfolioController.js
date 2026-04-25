@@ -1,13 +1,41 @@
 const PortfolioItem = require('../models/PortfolioItem');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Helper function to upload buffer to Cloudinary
+const uploadToCloudinary = (fileBuffer) => {
+    return new Promise((resolve, reject) => {
+        let stream = cloudinary.uploader.upload_stream(
+            { folder: 'portfolio_images' },
+            (error, result) => {
+                if (result) resolve(result.secure_url);
+                else reject(error);
+            }
+        );
+        streamifier.createReadStream(fileBuffer).pipe(stream);
+    });
+};
 
 exports.createPortfolioItem = async (req, res) => {
     try {
         const { title, description, address, lat, lng } = req.body;
-        const imageUrls = req.files ? req.files.map(file => file.path) : [];
+
+        let imageUrls = [];
+        if (req.files && req.files.length > 0) {
+            imageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+        }
 
         const newItem = new PortfolioItem({
             workerId: req.user.id,
-            title, description,
+            title,
+            description,
             images: imageUrls,
             location: { address, lat: Number(lat), lng: Number(lng) }
         });
@@ -15,6 +43,7 @@ exports.createPortfolioItem = async (req, res) => {
         await newItem.save();
         res.status(201).json({ msg: 'Portfolio item added successfully', item: newItem });
     } catch (error) {
+        console.error('createPortfolioItem error:', error);
         res.status(500).json({ msg: 'Server error' });
     }
 };
@@ -25,6 +54,7 @@ exports.getWorkerPortfolio = async (req, res) => {
         const items = await PortfolioItem.find({ workerId: targetWorkerId }).sort({ createdAt: -1 });
         res.status(200).json(items);
     } catch (error) {
+        console.error('getWorkerPortfolio error:', error);
         res.status(500).json({ msg: 'Server error' });
     }
 };
@@ -37,10 +67,9 @@ exports.updatePortfolioItem = async (req, res) => {
         if (!item) return res.status(404).json({ msg: 'Item not found' });
         if (item.workerId.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
 
-        // If new images were uploaded, add them to the existing array (or replace them based on your preference)
-        const newImageUrls = req.files ? req.files.map(file => file.path) : [];
-        if (newImageUrls.length > 0) {
-            item.images = newImageUrls; // Overwriting images for simplicity in edit
+        if (req.files && req.files.length > 0) {
+            const newImageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+            item.images = newImageUrls;
         }
 
         item.title = title || item.title;
@@ -50,6 +79,7 @@ exports.updatePortfolioItem = async (req, res) => {
         await item.save();
         res.status(200).json({ msg: 'Portfolio item updated', item });
     } catch (error) {
+        console.error('updatePortfolioItem error:', error);
         res.status(500).json({ msg: 'Server error' });
     }
 };
@@ -63,6 +93,7 @@ exports.deletePortfolioItem = async (req, res) => {
         await item.deleteOne();
         res.status(200).json({ msg: 'Portfolio item removed' });
     } catch (error) {
+        console.error('deletePortfolioItem error:', error);
         res.status(500).json({ msg: 'Server error' });
     }
 };

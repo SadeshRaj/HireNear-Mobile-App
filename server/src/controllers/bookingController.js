@@ -2,39 +2,38 @@ const Booking = require('../models/Booking');
 const JobPost = require('../models/JobPost');
 const User = require('../models/User');
 
-// 1. Create a new booking
+// --- 1. Create a new booking ---
 exports.createBooking = async (req, res) => {
     try {
         const { jobId, workerId, bidId, scheduledDate } = req.body;
-        const clientId = req.user.id;
+        // Use req.user._id from your protect middleware fix
+        const clientId = req.user._id || req.user.id;
 
         const newBooking = new Booking({
-            jobID: jobId,
-            bidID: bidId,
-            workerId: workerId,
-            clientId: clientId,
+            jobId,
+            bidId,
+            workerId,
+            clientId,
             scheduledDate: scheduledDate || new Date(),
-            status: 'Pending'
+            status: 'scheduled'
         });
 
         const savedBooking = await newBooking.save();
-        console.log("✅ SUCCESS: Booking created:", savedBooking._id);
         res.status(201).json(savedBooking);
     } catch (error) {
-        console.error("❌ CREATE BOOKING ERROR:", error.message);
         res.status(400).json({ message: "Validation failed", details: error.message });
     }
 };
 
-// 2. Fetch booking history
+// --- 2. Fetch booking history ---
 exports.getMyBookings = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user._id || req.user.id;
 
         const bookings = await Booking.find({
             $or: [{ clientId: userId }, { workerId: userId }]
         })
-            .populate('jobID', 'title budget location')
+            .populate('jobId', 'title budget location')
             .populate('workerId', 'name phone')
             .populate('clientId', 'name phone')
             .sort({ updatedAt: -1 })
@@ -46,85 +45,120 @@ exports.getMyBookings = async (req, res) => {
     }
 };
 
-// 3. Update status (Generic)
+// --- 3. Get Worker Specific Bookings ---
+exports.getWorkerBookings = async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.id;
+        const bookings = await Booking.find({ workerId: userId })
+            .populate('jobId', 'title budget category location status')
+            .populate('clientId', 'name phone')
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, bookings });
+    } catch (err) {
+        res.status(500).json({ success: false, msg: err.message });
+    }
+};
+
+// --- 4. Get booking details by Job ID ---
+exports.getBookingByJobId = async (req, res) => {
+    try {
+        const booking = await Booking.findOne({ jobId: req.params.jobId })
+            .populate('clientId', 'name phone')
+            .populate('workerId', 'name phone')
+            .populate('jobId');
+
+        if (!booking) return res.status(404).json({ success: false, msg: 'Booking not found' });
+        res.json({ success: true, booking });
+    } catch (err) {
+        res.status(500).json({ success: false, msg: err.message });
+    }
+};
+
+// --- 5. Update status (Generic) ---
 exports.updateBookingStatus = async (req, res) => {
     try {
         const { status } = req.body;
-
-        // FIXED: Using returnDocument to remove Mongoose warning
         const booking = await Booking.findByIdAndUpdate(
             req.params.id,
             { status: status },
-            { returnDocument: 'after' }
-        );
+            { new: true } // Standard Mongoose way to get updated doc
+        ).populate('clientId workerId jobId');
 
         if (!booking) return res.status(404).json({ message: "Booking not found" });
-        res.status(200).json(booking);
+        res.status(200).json({ success: true, booking });
     } catch (error) {
         res.status(500).json({ message: "Update failed", error: error.message });
     }
 };
 
-// 4. Complete Booking with Proof
+// --- 6. COMPLETE BOOKING (Final Synchronized Logic) ---
 exports.completeBooking = async (req, res) => {
+    console.log(`🏁 Completion request received for Booking: ${req.params.id}`);
+
     try {
         const bookingId = req.params.id;
-        const userId = req.user.id;
+        const userId = req.user._id || req.user.id;
 
+        // 1. Check if files exist (Multer puts them in req.files regardless of field name with .any())
         if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ msg: "No image uploaded" });
+            console.log("❌ No files found in request");
+            return res.status(400).json({ msg: "Please upload at least one proof image." });
         }
 
-        // Cloudinary provides the URL in .path or .secure_url
-        // We ensure forward slashes just in case of local testing fallbacks
-        const imageUrl = req.files[0].path.replace(/\\/g, '/');
+        // 2. Map Cloudinary URLs
+        const imageUrls = req.files.map(file => file.path);
+        console.log("📸 Images received from Cloudinary:", imageUrls);
 
-        // FIXED: Using returnDocument to remove Mongoose warning
+        // 3. Update Booking & Job status
         const updatedBooking = await Booking.findOneAndUpdate(
             { _id: bookingId, workerId: userId },
             {
-                $set: {
-                    status: 'Completed',
-                    completedAt: new Date()
-                },
-                $push: { completionImages: imageUrl }
+                $set: { status: 'completed', completedAt: new Date() },
+                $push: { attachments: { $each: imageUrls } }
             },
-            { returnDocument: 'after', runValidators: true }
+            { new: true }
         ).lean();
 
         if (!updatedBooking) {
-            return res.status(403).json({ msg: "Unauthorized or Booking not found" });
+            return res.status(403).json({ msg: "Booking not found or unauthorized" });
         }
 
-        console.log(`✅ SUCCESS: Job ${bookingId} completed. Image stored at: ${imageUrl}`);
+        // 4. Update JobPost to completed
+        await JobPost.findByIdAndUpdate(updatedBooking.jobId, { status: 'completed' });
+
+        console.log("✅ Booking marked as completed successfully");
         res.json({ success: true, booking: updatedBooking });
 
     } catch (error) {
-        console.error("❌ CompleteBooking Error:", error);
+        console.error("🔥 Controller Error:", error.message);
         res.status(500).json({ error: error.message });
     }
 };
 
-// 5. Cancel Booking
+// --- 7. Cancel Booking ---
 exports.cancelBooking = async (req, res) => {
     try {
         const bookingId = req.params.id;
-        const userId = req.user.id;
-
+        const userId = req.user._id || req.user.id;
         const booking = await Booking.findById(bookingId);
 
         if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-        if (booking.clientId.toString() !== userId && booking.workerId.toString() !== userId) {
+        // Security check
+        if (booking.clientId.toString() !== userId.toString() && booking.workerId.toString() !== userId.toString()) {
             return res.status(403).json({ message: "Unauthorized" });
         }
 
-        if (booking.status === 'Completed') {
-            return res.status(400).json({ message: "Cannot cancel a completed job" });
+        if (booking.status === 'completed') {
+            return res.status(400).json({ message: "Cannot cancel a job that is already completed." });
         }
 
-        booking.status = 'Cancelled';
+        booking.status = 'cancelled';
         await booking.save();
+
+        // Also free the job post back to 'pending' or 'cancelled'
+        await JobPost.findByIdAndUpdate(booking.jobId, { status: 'pending' });
 
         res.status(200).json({ message: "Booking cancelled successfully", booking });
     } catch (error) {

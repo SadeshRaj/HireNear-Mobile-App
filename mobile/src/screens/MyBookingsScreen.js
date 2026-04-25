@@ -22,8 +22,9 @@ const MyBookingsScreen = ({ navigation }) => {
             }
 
             const data = await getMyBookings();
-            // Sort by newest first so the most recent completion is at the top
-            const sortedData = data ? [...data].sort((a, b) =>
+
+            // Ensure data is an array before sorting
+            const sortedData = Array.isArray(data) ? [...data].sort((a, b) =>
                 new Date(b.createdAt) - new Date(a.createdAt)
             ) : [];
 
@@ -54,7 +55,6 @@ const MyBookingsScreen = ({ navigation }) => {
             <FlatList
                 data={bookings}
                 keyExtractor={(item) => item._id}
-                // IMPORTANT: Tells FlatList to re-render when user or bookings change
                 extraData={{ bookings, currentUser }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />
@@ -64,17 +64,27 @@ const MyBookingsScreen = ({ navigation }) => {
                         booking={item}
                         currentUser={currentUser}
                         onRefresh={() => loadData(true)}
-                        // Action for worker
+                        // Action for worker to go to completion screen
                         onAction={(id) => navigation.navigate('CompleteJob', { bookingId: id })}
-                        // Action for client (THE LINK)
-                        onViewProof={(imageUrl) => {
-                            if (imageUrl) {
+
+                        // FIX: Pull the first image from the attachments array
+                        onViewProof={() => {
+                            // Check if attachments exist and have at least one URL
+                            const proofUrl = item.attachments && item.attachments.length > 0
+                                ? item.attachments[0]
+                                : null;
+
+                            if (proofUrl) {
                                 navigation.navigate('ViewWorkProof', {
-                                    imageUrl,
-                                    title: item.jobID?.title
+                                    imageUrl: proofUrl,
+                                    // Make sure case matches your schema (jobId vs jobID)
+                                    title: item.jobId?.title || item.jobID?.title || "Work Proof"
                                 });
                             } else {
-                                Alert.alert("Notice", "The image is still being processed. Please refresh in a moment.");
+                                Alert.alert(
+                                    "Notice",
+                                    "The image is still being processed or was not uploaded. Please refresh in a moment."
+                                );
                             }
                         }}
                     />
