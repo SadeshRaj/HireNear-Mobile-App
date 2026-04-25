@@ -1,8 +1,10 @@
 const Bid = require('../models/Bid');
 const Job = require('../models/JobPost'); // <--- STEP 1: IMPORT THE JOB MODEL
+const Booking = require('../models/Booking');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
 
 // ─── Helper: Haversine distance in km ───────────────────────────────────────
 const haversineDistance = (coords1, coords2) => {
@@ -191,33 +193,64 @@ exports.withdrawBid = async (req, res) => {
 
 // ─── PATCH /api/bids/:bidId/accept  ─────────────────────────────────────────
 // Client accepts a bid → all other bids for that job become rejected
+// Import your Booking model at the top of his file if it's not there
+
+
+// ─── PATCH /api/bids/:bidId/accept  ─────────────────────────────────────────
 exports.acceptBid = async (req, res) => {
     try {
-        const bid = await Bid.findById(req.params.bidId);
+        // 1. Find the bid and populate the job data
+        const bid = await Bid.findById(req.params.bidId).populate('jobId');
         if (!bid) return res.status(404).json({ msg: 'Bid not found' });
+
         if (bid.status !== 'pending') {
-            return res.status(400).json({ msg: 'Can only accept a pending bid' });
+            return res.status(400).json({ msg: 'This bid is no longer pending' });
         }
 
-        // Accept this bid
+        // 2. Update the Bid status to 'accepted'
         bid.status = 'accepted';
         await bid.save();
 
-        // 2. STEP 2: UPDATE THE ACTUAL JOB POST STATUS
-        // This makes sure the job moves to the "Accepted" tab in your app
-        await Job.findByIdAndUpdate(bid.jobId, { status: 'accepted' });
+        // 3. Update the Job Post status to 'booked'
+        await Job.findByIdAndUpdate(bid.jobId._id, { status: 'booked' });
 
-        // Reject all other pending bids for the same job
+        // 4. FIXED: Create the Booking record with EXACT Schema names
+        // Note the capital ID at the end of jobID and bidID
+        const newBooking = new Booking({
+            jobID: bid.jobId._id,      // FIXED: must be jobID
+            bidID: bid._id,            // FIXED: must be bidID
+            clientId: req.user._id,    // The logged-in Client accepting the bid
+            workerId: bid.workerId,
+            status: 'Pending',
+            scheduledDate: new Date()
+        });
+
+        // This line was failing before because of the naming mismatch
+        await newBooking.save();
+
+        // 5. Reject all other pending bids for this job
         await Bid.updateMany(
-            { jobId: bid.jobId, _id: { $ne: bid._id }, status: 'pending' },
+            { jobId: bid.jobId._id, _id: { $ne: bid._id }, status: 'pending' },
             { status: 'rejected' }
         );
 
+        // 6. Return success to the phone
         const populated = await bid.populate('workerId', 'name email phone');
-        res.json({ msg: 'Bid accepted', bid: populated });
+        res.json({
+            success: true, // Useful for your frontend logic
+            msg: 'Bid accepted and Booking created!',
+            bid: populated,
+            bookingId: newBooking._id
+        });
+
     } catch (err) {
+        // This will now catch specific validation errors if they occur
         console.error('acceptBid error:', err.message);
-        res.status(500).json({ error: 'Server error', details: err.message });
+        res.status(500).json({
+            error: 'Server error',
+            details: err.message,
+            message: "Check if your Booking model expects jobID or jobId"
+        });
     }
 };
 

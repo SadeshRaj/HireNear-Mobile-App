@@ -1,15 +1,40 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack'; // Need this
 import { Ionicons } from '@expo/vector-icons';
 
-// Import your screens (we use ../screens because this file is inside the navigation folder)
 import DashboardScreen from '../screens/DashboardScreen';
 import MyJobPostsScreen from '../screens/MyJobPostsScreen';
+import MyBookingsScreen from '../screens/MyBookingsScreen';
+import ViewWorkProofScreen from '../screens/ViewWorkProofScreen'; // Import your proof screen
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+// 1. Create a Stack for the Bookings Tab
+function BookingsStack({ route }) {
+    const { user } = route.params || {};
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen
+                name="SchedulesList"
+                component={MyBookingsScreen}
+                initialParams={{ user }}
+            />
+            <Stack.Screen
+                name="ViewWorkProof"
+                component={ViewWorkProofScreen}
+                options={{
+                    headerShown: true,
+                    title: 'Work Completion Proof',
+                    headerBackTitle: 'Back'
+                }}
+            />
+        </Stack.Navigator>
+    );
+}
 
 export default function MainTabNavigator({ route }) {
-    // Safely extract the user passed from the Login screen
     const { user } = route?.params || {};
 
     return (
@@ -17,7 +42,10 @@ export default function MainTabNavigator({ route }) {
             screenOptions={({ route }) => ({
                 headerShown: false,
                 tabBarIcon: ({ focused, color, size }) => {
-                    let iconName = route.name === 'Home' ? 'home' : 'briefcase';
+                    let iconName;
+                    if (route.name === 'Home') iconName = 'home';
+                    else if (route.name === 'My Posts') iconName = 'briefcase';
+                    else if (route.name === 'Bookings') iconName = 'calendar';
                     if (!focused) iconName += '-outline';
                     return <Ionicons name={iconName} size={size} color={color} />;
                 },
@@ -35,6 +63,12 @@ export default function MainTabNavigator({ route }) {
                 name="My Posts"
                 component={MyJobPostsScreen}
                 initialParams={{ user, userId: user?._id || user?.id }}
+            />
+            {/* 2. Point the Bookings Tab to the Stack instead of the single Screen */}
+            <Tab.Screen
+                name="Bookings"
+                component={BookingsStack}
+                initialParams={{ user }}
             />
         </Tab.Navigator>
     );

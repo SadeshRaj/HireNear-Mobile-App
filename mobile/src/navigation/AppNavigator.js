@@ -24,6 +24,11 @@ import EditBidScreen from '../screens/EditBidScreen';
 
 // Portfolio Screen
 import WorkerPortfolioScreen from '../screens/WorkerPortfolioScreen';
+// booking
+import MyBookingsScreen from '../screens/MyBookingsScreen';
+import CompleteJobScreen from '../screens/CompleteJobScreen';
+import SchedulesScreen from '../screens/SchedulesScreen';
+import ViewWorkProofScreen from '../screens/ViewWorkProofScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -89,6 +94,16 @@ export default function AppNavigator() {
 
             {/* Portfolio Implementation */}
             <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
+
+            <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+            <Stack.Screen name="CompleteJob" component={CompleteJobScreen} />
+            {/* 2. Register the View Proof screen */}
+            <Stack.Screen
+                name="ViewWorkProof"
+                component={ViewWorkProofScreen}
+                options={{ headerShown: false, presentation: 'modal' }}
+            />
+
         </Stack.Navigator>
     );
 }

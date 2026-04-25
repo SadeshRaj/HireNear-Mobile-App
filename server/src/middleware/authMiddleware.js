@@ -14,7 +14,8 @@ const protect = (req, res, next) => {
 
             // Attach the user info (id, role, etc.) to the request object
             // This is what allows your req.user.id to work in the Booking controller!
-            req.user = decoded.user;
+            // Change this line:
+            req.user = decoded; // Instead of decoded.user
 
             next();
         } catch (error) {

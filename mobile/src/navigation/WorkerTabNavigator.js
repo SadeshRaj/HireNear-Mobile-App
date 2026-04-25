@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import WorkerDashboardScreen from '../screens/WorkerDashboardScreen';
 import MyBidsScreen from '../screens/MyBidsScreen';
-
+import MyBookingsScreen from '../screens/MyBookingsScreen';
+import SchedulesScreen from '../screens/SchedulesScreen';
 const Tab = createBottomTabNavigator();
 
 export default function WorkerTabNavigator({ route }) {
@@ -18,6 +19,7 @@ export default function WorkerTabNavigator({ route }) {
                     const icons = {
                         'Browse Jobs': focused ? 'search' : 'search-outline',
                         'My Bids': focused ? 'document-text' : 'document-text-outline',
+                        'Schedules': focused ? 'calendar' : 'calendar-outline',
                     };
                     return <Ionicons name={icons[route.name]} size={size} color={color} />;
                 },
@@ -44,6 +46,15 @@ export default function WorkerTabNavigator({ route }) {
                 name="My Bids"
                 component={MyBidsScreen}
             />
+
+            <Tab.Screen
+                name="Schedules"
+                component={SchedulesScreen} // Use your new screen
+                initialParams={{ user }}
+            />
+
+
+
         </Tab.Navigator>
     );
 }
