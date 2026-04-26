@@ -1,26 +1,23 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User'); // Import your User model
 
-const protect = async (req, res, next) => {
+const protect = (req, res, next) => {
     let token;
 
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
+            // Get token from header (Format: "Bearer <token>")
             token = req.headers.authorization.split(' ')[1];
 
+            // Verify token
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_temporary_secret_key');
 
-            // --- THE CRITICAL FIX ---
-            // Fetch the user from DB so req.user._id exists and matches MongoDB's format
-            req.user = await User.findById(decoded.id).select('-password');
-
-            if (!req.user) {
-                return res.status(401).json({ msg: 'User not found' });
-            }
+            // Attach the user info to the request object
+            req.user = decoded.user;
 
             next();
         } catch (error) {
             console.error("Token verification failed:", error.message);
+            // Returning 401 JSON so your frontend can show a custom UI error, not a browser alert
             return res.status(401).json({ msg: 'Not authorized, token failed' });
         }
     }
@@ -30,6 +27,7 @@ const protect = async (req, res, next) => {
     }
 };
 
+// Optional: Middleware to check for Admin roles
 const adminOnly = (req, res, next) => {
     if (req.user && req.user.role === 'Admin') {
         next();
