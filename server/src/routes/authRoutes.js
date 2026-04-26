@@ -6,18 +6,20 @@ const {
     loginUser,
     changePassword,
     updateProfile,
-    getWorkerById // Make sure this is imported
+    getWorkerById
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
+const upload = require('../middleware/upload'); // Added upload middleware
 
 router.post('/register', registerUser);
 router.post('/verify-otp', verifyOTP);
 router.post('/login', loginUser);
 router.put('/change-password', protect, changePassword);
-router.put('/profile', protect, updateProfile);
 
-// New Route: Fetch worker profile by ID
-// This will be called as /api/auth/worker/:workerId
+// Apply the upload middleware for the profile image
+router.put('/profile', protect, upload.single('profileImage'), updateProfile);
+
+// Route: Fetch worker profile by ID
 router.get('/worker/:workerId', protect, getWorkerById);
 
 module.exports = router;
