@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import WorkerDashboardScreen from '../screens/WorkerDashboardScreen';
 import MyBidsScreen from '../screens/MyBidsScreen';
-import SchedulesScreen from '../screens/SchedulesScreen';
+// NEW SCREENS
 import WorkerActiveJobsScreen from '../screens/WorkerActiveJobsScreen';
 import EarningsScreen from '../screens/EarningsScreen';
 
@@ -16,12 +16,11 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 export default function WorkerTabNavigator({ route }) {
     const { user } = route?.params || {};
     const [activeJobsCount, setActiveJobsCount] = useState(0);
-    // 1. ADDED: State for Schedules Badge
-    const [scheduleCount, setScheduleCount] = useState(0);
 
+    // Fetch active bookings continuously to keep the badge updated
     useFocusEffect(
         useCallback(() => {
-            const fetchBadgeCounts = async () => {
+            const fetchActiveBookings = async () => {
                 try {
                     const token = await AsyncStorage.getItem('token');
                     const res = await fetch(`${API_BASE_URL}/bookings/worker`, {
@@ -30,19 +29,15 @@ export default function WorkerTabNavigator({ route }) {
                     const data = await res.json();
 
                     if (data.success && Array.isArray(data.bookings)) {
-                        // 2. LOGIC: Count for Active Jobs (In-Progress)
-                        const active = data.bookings.filter(b => b.status === 'in-progress');
+                        // Count jobs that the worker needs to act on (scheduled or in-progress)
+                        const active = data.bookings.filter(b => b.status === 'scheduled' || b.status === 'in-progress');
                         setActiveJobsCount(active.length);
-
-                        // 3. LOGIC: Count for Schedules (Newly accepted 'scheduled' jobs)
-                        const scheduled = data.bookings.filter(b => b.status === 'scheduled');
-                        setScheduleCount(scheduled.length);
                     }
                 } catch (err) {
-                    console.log("Error fetching badge counts", err);
+                    console.log("Error fetching badge count", err);
                 }
             };
-            fetchBadgeCounts();
+            fetchActiveBookings();
         }, [])
     );
 
@@ -54,7 +49,6 @@ export default function WorkerTabNavigator({ route }) {
                     const icons = {
                         'Browse Jobs': focused ? 'search' : 'search-outline',
                         'My Bids': focused ? 'document-text' : 'document-text-outline',
-                        'Schedules': focused ? 'calendar' : 'calendar-outline',
                         'Active Jobs': focused ? 'hammer' : 'hammer-outline',
                         'Earnings': focused ? 'wallet' : 'wallet-outline',
                     };
@@ -68,33 +62,35 @@ export default function WorkerTabNavigator({ route }) {
                     paddingTop: 10,
                     borderTopColor: '#f1f5f9',
                 },
-                tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+                tabBarLabelStyle: {
+                    // Slightly smaller font so 4 tabs fit nicely
+                    fontSize: 10,
+                    fontWeight: '600',
+                },
             })}
         >
-            <Tab.Screen name="Browse Jobs" component={WorkerDashboardScreen} initialParams={{ user }} />
-            <Tab.Screen name="My Bids" component={MyBidsScreen} />
-
+            <Tab.Screen
+                name="Browse Jobs"
+                component={WorkerDashboardScreen}
+                initialParams={{ user }}
+            />
+            <Tab.Screen
+                name="My Bids"
+                component={MyBidsScreen}
+            />
             <Tab.Screen
                 name="Active Jobs"
                 component={WorkerActiveJobsScreen}
                 options={{
+                    // Notification badge logic
                     tabBarBadge: activeJobsCount > 0 ? activeJobsCount : null,
                     tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white' }
                 }}
             />
-
-            {/* 4. UPDATED: Added badge to Schedules */}
             <Tab.Screen
-                name="Schedules"
-                component={SchedulesScreen}
-                initialParams={{ user }}
-                options={{
-                    tabBarBadge: scheduleCount > 0 ? scheduleCount : null,
-                    tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white' }
-                }}
+                name="Earnings"
+                component={EarningsScreen}
             />
-
-            <Tab.Screen name="Earnings" component={EarningsScreen} />
         </Tab.Navigator>
     );
 }

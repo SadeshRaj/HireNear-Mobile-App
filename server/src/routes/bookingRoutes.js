@@ -1,27 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const bookingController = require('../controllers/bookingController');
-const { protect } = require('../middleware/authMiddleware');
-const upload = require('../middleware/multerConfig');
+const {
+    getBookingByJobId,
+    updateBookingStatus,
+    uploadProof,
+    getWorkerBookings
+} = require('../controllers/bookingController');
+const { protect } = require('../middleware/auth');
+const multer = require('multer');
 
-// --- CLIENT & GENERAL ROUTES ---
-router.post('/', protect, bookingController.createBooking);
-router.get('/my-history', protect, bookingController.getMyBookings);
-router.get('/job/:jobId', protect, bookingController.getBookingByJobId);
+const upload = multer({ storage: multer.memoryStorage() });
 
-// --- WORKER SPECIFIC ROUTES ---
-router.get('/worker', protect, bookingController.getWorkerBookings);
-router.patch('/:id/status', protect, bookingController.updateBookingStatus);
+// Get all active bookings for a worker
+router.get('/worker', protect, getWorkerBookings);
 
-// 6. COMPLETE JOB (The high-priority fix)
-// Using .any() to prevent "Unexpected field" errors from mobile naming mismatches
-router.patch(
-    '/:id/complete',
-    protect,
-    upload.any(),
-    bookingController.completeBooking
-);
+// Get specific booking by Job ID
+router.get('/job/:jobId', protect, getBookingByJobId);
 
-router.put('/:id/cancel', protect, bookingController.cancelBooking);
+// Update status (pending, scheduled, in-progress, completed)
+router.patch('/:id/status', protect, updateBookingStatus);
+
+// Worker uploads work proof photos (allows up to 5 images at once)
+router.post('/:id/upload-proof', protect, upload.array('images', 5), uploadProof);
 
 module.exports = router;

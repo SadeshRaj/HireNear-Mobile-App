@@ -20,9 +20,7 @@
         "foregroundImage": "./assets/HireNear_Logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "usesCleartextTraffic": true,
-      "package": "com.yourname.hirenear"
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/HireNear_Logo.png"

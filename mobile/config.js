@@ -2,4 +2,4 @@
 // Set EXPO_PUBLIC_API_URL in mobile/.env to switch between emulator and physical device
 
 export const API_BASE_URL =
-    process.env.EXPO_PUBLIC_API_URL || 'http://10.154.201.48:4000/api';
+    process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:4000/api';
