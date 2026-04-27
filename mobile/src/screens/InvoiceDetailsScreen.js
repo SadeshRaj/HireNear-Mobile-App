@@ -51,13 +51,24 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
 
     // --- CRUD: UPDATE FUNCTIONS ---
     const startEditing = () => {
-        setEditItems([...invoice.items]);
+        setEditItems(JSON.parse(JSON.stringify(invoice.items))); // Deep copy
         setIsEditing(true);
+    };
+
+    // Handles inline text changes for existing items
+    const handleInlineEdit = (index, field, value) => {
+        const updated = [...editItems];
+        if (field === 'amount') {
+            updated[index][field] = value ? parseFloat(value) || 0 : '';
+        } else {
+            updated[index][field] = value;
+        }
+        setEditItems(updated);
     };
 
     const handleAddEditItem = () => {
         if (!editDesc || !editAmount) return;
-        setEditItems([...editItems, { description: editDesc, amount: parseFloat(editAmount) }]);
+        setEditItems([...editItems, { description: editDesc, amount: parseFloat(editAmount), isFixed: false }]);
         setEditDesc('');
         setEditAmount('');
     };
@@ -68,8 +79,16 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
 
     const saveEditedInvoice = async () => {
         if (editItems.length === 0) return Alert.alert("Error", "Invoice must have at least one item.");
+
+        // Ensure no empty descriptions or amounts are sent
+        for (let item of editItems) {
+            if (!item.description || item.amount === '' || isNaN(item.amount)) {
+                return Alert.alert("Error", "Please ensure all fields are filled out correctly.");
+            }
+        }
+
         setIsSavingEdit(true);
-        const newTotal = editItems.reduce((sum, item) => sum + item.amount, 0);
+        const newTotal = editItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
 
         try {
             const token = await AsyncStorage.getItem('token');
@@ -222,7 +241,6 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
         const workerPhone = invoice.workerId?.phone || '';
         const clientName = invoice.clientId?.name || 'Client';
 
-        // Check if it was a cash payment for the stamp
         const isCash = invoice.paymentSlipUrl === 'CASH';
         const stampText = isCash ? 'PAID IN CASH' : 'PAID IN FULL';
 
@@ -332,7 +350,7 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
 
     const fallbackImage = 'https://via.placeholder.com/400x300?text=No+Slip+Available';
     const activeItems = isEditing ? editItems : invoice.items;
-    const currentTotal = activeItems.reduce((sum, item) => sum + item.amount, 0);
+    const currentTotal = activeItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
@@ -385,23 +403,46 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
                     </View>
 
                     {activeItems.map((item, index) => (
-                        <View key={index} className="flex-row p-4 border-b border-slate-50 items-center">
-                            <Text className="flex-1 text-slate-600 font-medium">{item.description}</Text>
-                            <Text className="w-24 text-slate-900 text-right font-bold mr-2">LKR {item.amount}</Text>
-                            {isEditing && (
-                                <TouchableOpacity onPress={() => handleRemoveEditItem(index)} className="p-1 bg-red-50 rounded-md">
-                                    <Ionicons name="close" size={16} color="#ef4444" />
-                                </TouchableOpacity>
+                        <View key={index} className={`flex-row p-4 border-b border-slate-50 items-center ${isEditing ? 'bg-indigo-50/30' : ''}`}>
+                            {isEditing ? (
+                                <>
+                                    <TextInput
+                                        value={item.description}
+                                        onChangeText={(text) => handleInlineEdit(index, 'description', text)}
+                                        className="flex-1 bg-white p-2 rounded-lg border border-slate-200 mr-2 text-slate-700 text-sm"
+                                    />
+                                    <TextInput
+                                        value={item.amount.toString()}
+                                        onChangeText={(text) => handleInlineEdit(index, 'amount', text)}
+                                        editable={!item.isFixed} // Disable amount input if fixed
+                                        keyboardType="numeric"
+                                        className={`w-24 bg-white p-2 rounded-lg border border-slate-200 text-slate-900 text-right text-sm font-bold ${item.isFixed ? 'bg-slate-100 opacity-50' : ''}`}
+                                    />
+
+                                    {!item.isFixed ? (
+                                        <TouchableOpacity onPress={() => handleRemoveEditItem(index)} className="p-2 ml-2 bg-red-50 rounded-md">
+                                            <Ionicons name="trash" size={16} color="#ef4444" />
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <View className="w-[32px] ml-2" /> // Empty placeholder to keep alignment
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <Text className="flex-1 text-slate-600 font-medium">{item.description}</Text>
+                                    <Text className="w-24 text-slate-900 text-right font-bold mr-2">LKR {item.amount}</Text>
+                                </>
                             )}
                         </View>
                     ))}
 
-                    {/* Inline Editor Row */}
+                    {/* Inline Editor Row for NEW items */}
                     {isEditing && (
                         <View className="p-4 bg-slate-50 border-t border-slate-200">
+                            <Text className="text-xs text-slate-500 font-bold mb-2 uppercase tracking-wider">Add New Row</Text>
                             <View className="flex-row gap-2 mb-2">
-                                <TextInput placeholder="New Item" value={editDesc} onChangeText={setEditDesc} className="flex-1 bg-white p-3 rounded-lg border border-slate-200 text-sm" />
-                                <TextInput placeholder="Price" value={editAmount} onChangeText={setEditAmount} keyboardType="numeric" className="w-24 bg-white p-3 rounded-lg border border-slate-200 text-sm" />
+                                <TextInput placeholder="New Item Description" value={editDesc} onChangeText={setEditDesc} className="flex-1 bg-white p-3 rounded-lg border border-slate-200 text-sm" />
+                                <TextInput placeholder="Amount" value={editAmount} onChangeText={setEditAmount} keyboardType="numeric" className="w-24 bg-white p-3 rounded-lg border border-slate-200 text-sm" />
                             </View>
                             <TouchableOpacity onPress={handleAddEditItem} className="bg-slate-900 p-3 rounded-lg items-center">
                                 <Text className="text-white font-bold text-sm">Add Item</Text>
