@@ -167,6 +167,7 @@ export default function MyJobPostsScreen({ navigation, route }) {
                     </View>
                 </View>
 
+                {/* UPDATED ACTION SECTION */}
                 <View className="flex-row gap-2 border-t border-gray-50 pt-4">
                     {isActionable ? (
                         <>
@@ -185,27 +186,64 @@ export default function MyJobPostsScreen({ navigation, route }) {
                                 </Text>
                             </TouchableOpacity>
 
-                            {/* CHAT ACTION BUTTON */}
+                            {/* CHAT BUTTON */}
                             <TouchableOpacity
                                 className="w-12 h-12 bg-indigo-50 border border-indigo-100 justify-center items-center rounded-xl"
-                                onPress={() => navigation.navigate('Chat', {
-                                    bookingId: item.bookingId, // Assumes your API returns this
-                                    receiverName: "Worker", // Ideally pass item.workerName if available
-                                    receiverId: item.workerId
-                                })}
+                                onPress={async () => {
+                                    try {
+                                        console.log("Clicked job:", item);
+                                        console.log("Job ID:", item._id);
+
+                                        const token = await AsyncStorage.getItem('token');
+
+                                        const res = await fetch(`${API_BASE_URL}/bookings/job/${item._id}`, {
+                                            headers: {
+                                                Authorization: `Bearer ${token}`
+                                            }
+                                        });
+
+                                        const data = await res.json();
+
+                                        if (!data.success || !data.booking) {
+                                            console.log("❌ No booking found");
+                                            Alert.alert("No Booking", "This job does not have an active booking.");
+                                            return;
+                                        }
+
+                                        const booking = data.booking;
+
+                                        console.log("✅ Booking ID:", booking._id);
+
+                                        navigation.navigate('Chat', {
+                                            bookingId: booking._id,
+                                            receiverName: booking.workerId?.name || "Worker",
+                                            receiverId: booking.workerId?._id,
+                                            userId: booking.clientId?._id
+                                        });
+
+                                    } catch (err) {
+                                        console.error("🔥 Error:", err);
+                                        Alert.alert("Error", "Failed to open chat.");
+                                    }
+                                }}
                             >
                                 <Ionicons name="chatbubble-ellipses" size={22} color="#4F46E5" />
                             </TouchableOpacity>
                         </>
-                    ) : !isCancelled && (
+                    ) : !isCancelled ? (
                         <TouchableOpacity
                             className="flex-1 flex-row justify-center items-center py-2.5 rounded-xl bg-slate-900"
                             onPress={() => navigation.navigate('JobBids', { jobId: item._id, jobTitle: item.title })}
                         >
                             <Text className="text-white text-xs font-bold">View Bids</Text>
                         </TouchableOpacity>
+                    ) : (
+                        <View className="flex-1 py-2.5 items-center justify-center bg-slate-50 rounded-xl">
+                            <Text className="text-slate-400 text-xs font-bold italic">This job was cancelled</Text>
+                        </View>
                     )}
 
+                    {/* EDIT & DELETE OPTIONS (only for open/closed jobs) */}
                     {!isAccepted && !isCompleted && !isCancelled && (
                         <>
                             <TouchableOpacity
@@ -223,12 +261,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                                 <Ionicons name="trash-outline" size={18} color="#e11d48" />
                             </TouchableOpacity>
                         </>
-                    )}
-
-                    {isCancelled && (
-                        <View className="flex-1 py-2.5 items-center justify-center bg-slate-50 rounded-xl">
-                            <Text className="text-slate-400 text-xs font-bold italic">This job was cancelled</Text>
-                        </View>
                     )}
                 </View>
             </View>
