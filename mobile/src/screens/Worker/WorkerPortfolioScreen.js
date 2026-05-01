@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL } from '../../../config';
 
 const { width } = Dimensions.get('window');
 

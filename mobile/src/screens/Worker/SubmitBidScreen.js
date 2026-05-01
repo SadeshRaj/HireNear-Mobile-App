@@ -6,19 +6,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { updateBid } from '../services/bidService';
+import * as Location from 'expo-location';
+import { submitBid } from '../../services/bidService';
 
 /**
- * EditBidScreen — Worker edits a pending bid
- * Route params: { bid: { _id, price, message, estimatedTime, jobId: { title } } }
+ * SubmitBidScreen
+ * Route params: { job: { _id, title, description, budget, location } }
  */
-export default function EditBidScreen({ navigation, route }) {
-    const { bid } = route.params || {};
-    const job = bid?.jobId || {};
+export default function SubmitBidScreen({ navigation, route }) {
+    const { job } = route.params || {};
 
-    const [price, setPrice] = useState(String(bid?.price || ''));
-    const [message, setMessage] = useState(bid?.message || '');
-    const [estimatedTime, setEstimatedTime] = useState(bid?.estimatedTime || '');
+    const [price, setPrice] = useState('');
+    const [message, setMessage] = useState('');
+    const [estimatedTime, setEstimatedTime] = useState('');
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -32,7 +32,7 @@ export default function EditBidScreen({ navigation, route }) {
             if (!result.canceled && result.assets) {
                 setFiles(prev => [...prev, ...result.assets]);
             }
-        } catch {
+        } catch (e) {
             Alert.alert('Error', 'Could not pick file');
         }
     };
@@ -41,7 +41,7 @@ export default function EditBidScreen({ navigation, route }) {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleUpdate = async () => {
+    const handleSubmit = async () => {
         if (!price || isNaN(Number(price)) || Number(price) <= 0) {
             setError('Please enter a valid price.');
             return;
@@ -49,20 +49,38 @@ export default function EditBidScreen({ navigation, route }) {
         setError('');
         setLoading(true);
         try {
-            const result = await updateBid(bid._id, {
+            const jobCoordinates = job?.location?.coordinates || null;
+
+            // Get worker's current GPS for accurate distance calculation
+            let workerLat = null, workerLng = null;
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    workerLat = pos.coords.latitude;
+                    workerLng = pos.coords.longitude;
+                }
+            } catch { /* GPS optional — distance will be null */ }
+
+            const result = await submitBid({
+                jobId: job._id,
                 price: Number(price),
                 message,
                 estimatedTime,
+                jobCoordinates,
+                workerLat,
+                workerLng,
                 files,
             });
             if (result._id) {
-                Alert.alert('Updated! ✅', 'Your bid has been updated.', [
-                    { text: 'OK', onPress: () => navigation.goBack() }
+                Alert.alert('Success! 🎉', 'Your bid has been submitted.', [
+                    { text: 'View My Bids', onPress: () => navigation.navigate('MyBids') },
+                    { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
             } else {
-                setError(result.msg || 'Failed to update. Try again.');
+                setError(result.msg || 'Failed to submit bid. Try again.');
             }
-        } catch {
+        } catch (e) {
             setError('Network error. Please check your connection.');
         } finally {
             setLoading(false);
@@ -87,15 +105,26 @@ export default function EditBidScreen({ navigation, route }) {
 
                     {/* Header */}
                     <View className="mb-6">
-                        <Text className="text-4xl font-extrabold text-slate-900 tracking-tight mb-1">Edit Bid.</Text>
-                        <Text className="text-slate-500 font-medium">Update your proposal before it's accepted.</Text>
+                        <Text className="text-4xl font-extrabold text-slate-900 tracking-tight mb-1">Place a Bid.</Text>
+                        <Text className="text-slate-500 font-medium">Submit your proposal for this job.</Text>
                     </View>
 
-                    {/* Job Title */}
-                    {job.title && (
+                    {/* Job Summary Card */}
+                    {job && (
                         <View className="bg-white rounded-[28px] p-5 shadow-sm border border-gray-100 mb-6">
                             <Text className="text-xs text-slate-400 font-semibold uppercase tracking-widest mb-1">Job</Text>
-                            <Text className="text-base font-bold text-slate-900">{job.title}</Text>
+                            <Text className="text-lg font-bold text-slate-900 mb-1">{job.title}</Text>
+                            {!!job.description && (
+                                <Text className="text-slate-500 text-sm mb-3" numberOfLines={2}>{job.description}</Text>
+                            )}
+                            {!!job.budget && (
+                                <View className="flex-row items-center">
+                                    <Ionicons name="cash-outline" size={15} color="#047857" />
+                                    <Text className="text-emerald-700 font-bold ml-1.5 text-sm">
+                                        Budget: LKR {job.budget?.toLocaleString()}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     )}
 
@@ -107,7 +136,7 @@ export default function EditBidScreen({ navigation, route }) {
                         </View>
                     )}
 
-                    {/* Price */}
+                    {/* Price Input */}
                     <View className="mb-5">
                         <Text className="text-xs text-slate-400 font-semibold uppercase tracking-widest ml-1 mb-2">
                             Your Price (LKR) *
@@ -133,7 +162,7 @@ export default function EditBidScreen({ navigation, route }) {
                         <View className="flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100">
                             <Ionicons name="timer-outline" size={22} color="#94a3b8" />
                             <TextInput
-                                placeholder="e.g. 2 days"
+                                placeholder="e.g. 2 days, 4 hours"
                                 className="flex-1 ml-3 text-base text-slate-800"
                                 placeholderTextColor="#94a3b8"
                                 value={estimatedTime}
@@ -142,7 +171,7 @@ export default function EditBidScreen({ navigation, route }) {
                         </View>
                     </View>
 
-                    {/* Message */}
+                    {/* Proposal Message */}
                     <View className="mb-5">
                         <Text className="text-xs text-slate-400 font-semibold uppercase tracking-widest ml-1 mb-2">
                             Proposal Message
@@ -151,7 +180,7 @@ export default function EditBidScreen({ navigation, route }) {
                             <View className="flex-row items-start">
                                 <Ionicons name="document-text-outline" size={22} color="#94a3b8" />
                                 <TextInput
-                                    placeholder="Update your proposal..."
+                                    placeholder="Describe your approach, experience, and why you're the best fit..."
                                     className="flex-1 ml-3 text-base text-slate-800 h-28"
                                     placeholderTextColor="#94a3b8"
                                     multiline
@@ -163,10 +192,10 @@ export default function EditBidScreen({ navigation, route }) {
                         </View>
                     </View>
 
-                    {/* Additional Attachments */}
+                    {/* File Attachments */}
                     <View className="mb-8">
                         <Text className="text-xs text-slate-400 font-semibold uppercase tracking-widest ml-1 mb-2">
-                            Add More Attachments
+                            Attachments (Optional)
                         </Text>
 
                         {files.map((file, index) => (
@@ -190,21 +219,21 @@ export default function EditBidScreen({ navigation, route }) {
                         >
                             <Ionicons name="cloud-upload-outline" size={20} color="#64748b" />
                             <Text className="text-slate-500 font-semibold ml-2">
-                                Attach additional files
+                                Attach estimate / sketch / voice note
                             </Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* Update Button */}
+                    {/* Submit Button */}
                     <TouchableOpacity
-                        className={`bg-blue-600 rounded-3xl py-4 items-center shadow-md mb-12 ${loading ? 'opacity-60' : ''}`}
-                        onPress={handleUpdate}
+                        className={`bg-slate-900 rounded-3xl py-4 items-center shadow-md mb-12 ${loading ? 'opacity-60' : ''}`}
+                        onPress={handleSubmit}
                         disabled={loading}
                     >
                         {loading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text className="text-white font-bold text-lg tracking-wide">Update Bid</Text>
+                            <Text className="text-white font-bold text-lg tracking-wide">Submit Bid</Text>
                         )}
                     </TouchableOpacity>
 

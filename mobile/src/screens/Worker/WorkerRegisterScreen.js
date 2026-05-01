@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL } from '../../../config';
 
 const PRESET_SKILLS = ["Plumbing", "Electrical", "Carpentry", "Cleaning", "Painting", "AC Repair", "Gardening", "Masonry"];
 

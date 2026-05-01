@@ -30,7 +30,7 @@ export default function GenerateInvoiceScreen({ route, navigation }) {
     const generatePDF = async (savedInvoice) => {
         let logoSrc = '';
         try {
-            const asset = await Asset.loadAsync(require('../../assets/HireNear_Logo.png'));
+            const asset = await Asset.loadAsync(require('../../../assets/HireNear_Logo.png'));
             const imageUri = asset[0].localUri || asset[0].uri;
             if (imageUri) {
                 const logoBase64 = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
