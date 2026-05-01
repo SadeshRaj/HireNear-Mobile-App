@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import JobBidsScreen from '../screens/JobBidsScreen';
+import BidDetailScreen from '../screens/BidDetailScreen';
 import BookingDetailsScreen from '../screens/BookingDetailsScreen';
 import WorkerBookingDetailsScreen from '../screens/WorkerBookingDetailsScreen';
 
@@ -94,6 +95,8 @@ export default function AppNavigator() {
             {/* Updated Invoice Screens */}
             <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
             <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen} />
+
+            <Stack.Screen name="BidDetail" component={BidDetailScreen} />
         </Stack.Navigator>
     );
 }

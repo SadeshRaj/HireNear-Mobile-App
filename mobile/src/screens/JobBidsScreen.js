@@ -4,11 +4,11 @@ import {
     Image, Alert, Linking, RefreshControl, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../config';
 
-const BidItem = ({ item, onAction, onNavigatePortfolio }) => (
+const BidItem = ({ item, onAction, onNavigatePortfolio, onNavigateDetail }) => (
     <View className="bg-white rounded-[32px] p-5 mb-4 shadow-sm border border-gray-100">
         {item.status !== 'pending' ? (
             <View className={`self-start px-3 py-1 rounded-full mb-3 ${
@@ -22,49 +22,54 @@ const BidItem = ({ item, onAction, onNavigatePortfolio }) => (
             </View>
         ) : null}
 
-        <View className="flex-row items-center mb-4">
-            <TouchableOpacity
-                onPress={() => onNavigatePortfolio(item.workerId?._id)}
-                className="w-14 h-14 bg-slate-100 rounded-2xl items-center justify-center overflow-hidden border border-gray-50"
-            >
-                {item.workerId?.profileImage ? (
-                    <Image source={{ uri: item.workerId.profileImage }} className="w-full h-full" />
-                ) : (
-                    <FontAwesome5 name="user-alt" size={20} color="#94a3b8" />
-                )}
-            </TouchableOpacity>
-
-            <View className="ml-3 flex-1">
-                <TouchableOpacity onPress={() => onNavigatePortfolio(item.workerId?._id)}>
-                    <Text className="text-lg font-bold text-slate-900">{item.workerId?.name}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={() => onNavigatePortfolio(item.workerId?._id)}
-                    className="flex-row items-center mt-0.5"
+        <TouchableOpacity 
+            onPress={() => onNavigateDetail(item)}
+            activeOpacity={0.7}
+        >
+            <View className="flex-row items-center mb-4">
+                <View
+                    className="w-14 h-14 bg-slate-100 rounded-2xl items-center justify-center overflow-hidden border border-gray-50"
                 >
-                    <Text className="text-emerald-600 text-[10px] font-bold uppercase">View Portfolio</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#059669" />
-                </TouchableOpacity>
+                    {item.workerId?.profileImage ? (
+                        <Image source={{ uri: item.workerId.profileImage }} className="w-full h-full" />
+                    ) : (
+                        <FontAwesome5 name="user-alt" size={20} color="#94a3b8" />
+                    )}
+                </View>
 
-                <View className="flex-row items-center mt-1">
-                    <Ionicons name="location" size={12} color="#64748b" />
-                    <Text className="text-slate-500 text-xs ml-1">
-                        {item.distance !== null && item.distance !== undefined ? `${item.distance} km away` : 'Location N/A'}
-                    </Text>
+                <View className="ml-3 flex-1">
+                    <Text className="text-lg font-bold text-slate-900">{item.workerId?.name}</Text>
+
+                    <View className="flex-row items-center mt-0.5">
+                        <Text className="text-emerald-600 text-[10px] font-bold uppercase">View Details</Text>
+                        <Ionicons name="chevron-forward" size={10} color="#059669" />
+                    </View>
+
+                    <View className="flex-row items-center mt-1">
+                        <Ionicons name="location" size={12} color="#64748b" />
+                        <Text className="text-slate-500 text-xs ml-1">
+                            {item.distance !== null && item.distance !== undefined ? `${item.distance} km away` : 'Location N/A'}
+                        </Text>
+                    </View>
+                </View>
+
+                <View className="items-end">
+                    <Text className="text-emerald-700 font-black text-lg">Rs.{(item.price || 0).toLocaleString()}</Text>
+                    <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Quote</Text>
                 </View>
             </View>
 
-            <View className="items-end">
-                <Text className="text-emerald-700 font-black text-lg">Rs.{(item.price || 0).toLocaleString()}</Text>
-                <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Quote</Text>
+            <View className="bg-slate-50 rounded-2xl p-4 mb-4">
+                <Text className="text-slate-400 text-[10px] font-bold uppercase mb-1">Proposal</Text>
+                <Text className="text-slate-700 text-sm leading-5" numberOfLines={2}>"{item.message}"</Text>
+                {item.attachments?.length > 0 && (
+                    <View className="flex-row items-center mt-2">
+                        <Feather name="paperclip" size={12} color="#94a3b8" />
+                        <Text className="text-slate-400 text-[10px] ml-1">{item.attachments.length} attachment(s)</Text>
+                    </View>
+                )}
             </View>
-        </View>
-
-        <View className="bg-slate-50 rounded-2xl p-4 mb-4">
-            <Text className="text-slate-400 text-[10px] font-bold uppercase mb-1">Proposal</Text>
-            <Text className="text-slate-700 text-sm leading-5">"{item.message}"</Text>
-        </View>
+        </TouchableOpacity>
 
         {item.status === 'pending' ? (
             <View className="flex-row gap-2">
@@ -209,6 +214,7 @@ export default function JobBidsScreen({ route, navigation }) {
                                     item={item} 
                                     onAction={handleAction}
                                     onNavigatePortfolio={(workerId) => navigation.navigate('WorkerPortfolio', { workerId })} 
+                                    onNavigateDetail={(bid) => navigation.navigate('BidDetail', { bid, refreshBids: fetchBids })}
                                 />
                             ))
                         ) : (
