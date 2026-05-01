@@ -9,9 +9,12 @@ const {
     getUserById,
     updateUserStatus,
     deleteUser,
-    deletePortfolio
+    deletePortfolio,
+    getDashboardOverview // NEW: Imported the new function
 } = require('../controllers/adminController');
 const { protect, isAdmin } = require('../middleware/auth');
+
+router.get('/overview', protect, isAdmin, getDashboardOverview); // NEW: The overview route
 
 router.get('/users', protect, isAdmin, getAllUsers);
 router.get('/users/:id', protect, isAdmin, getUserById);
