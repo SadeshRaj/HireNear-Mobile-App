@@ -3,6 +3,7 @@ const Job = require('../models/JobPost'); // <--- STEP 1: IMPORT THE JOB MODEL
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const Booking = require('../models/Booking'); // <--- ADD THIS
 
 // ─── Helper: Haversine distance in km ───────────────────────────────────────
 const haversineDistance = (coords1, coords2) => {
@@ -199,13 +200,30 @@ exports.acceptBid = async (req, res) => {
             return res.status(400).json({ msg: 'Can only accept a pending bid' });
         }
 
+        // ✅ ADD THIS: Fetch the job
+        const job = await Job.findById(bid.jobId);
+        if (!job) return res.status(404).json({ msg: 'Job not found' });
+
         // Accept this bid
         bid.status = 'accepted';
         await bid.save();
 
-        // 2. STEP 2: UPDATE THE ACTUAL JOB POST STATUS
-        // This makes sure the job moves to the "Accepted" tab in your app
+        // Update job status
         await Job.findByIdAndUpdate(bid.jobId, { status: 'accepted' });
+
+        // ✅ FIXED: Now job.clientId works
+        const newBooking = new Booking({
+            jobId: bid.jobId,
+            bidId: bid._id,
+            clientId: job.clientId, // now valid
+            workerId: bid.workerId,
+            price: bid.price,
+            status: 'scheduled',
+            scheduledDate: new Date(),
+            attachments: []
+        });
+
+        await newBooking.save();
 
         // Reject all other pending bids for the same job
         await Bid.updateMany(
@@ -215,6 +233,7 @@ exports.acceptBid = async (req, res) => {
 
         const populated = await bid.populate('workerId', 'name email phone');
         res.json({ msg: 'Bid accepted', bid: populated });
+
     } catch (err) {
         console.error('acceptBid error:', err.message);
         res.status(500).json({ error: 'Server error', details: err.message });

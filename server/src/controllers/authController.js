@@ -2,13 +2,34 @@ const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const uploadToCloudinary = (fileBuffer) => {
+    return new Promise((resolve, reject) => {
+        let stream = cloudinary.uploader.upload_stream(
+            { folder: 'profile_images' },
+            (error, result) => {
+                if (result) resolve(result.secure_url);
+                else reject(error);
+            }
+        );
+        streamifier.createReadStream(fileBuffer).pipe(stream);
+    });
+};
 
 const formatPhone = (phone) => {
     return phone.startsWith('0') ? '94' + phone.substring(1) : phone;
 };
 
 // ─── POST /api/auth/register ─────────────────────────────────────────────────
-// Sends OTP via SMS for phone verification
 exports.registerUser = async (req, res) => {
     try {
         const { name, email, password, role, phone, skills, bio, location } = req.body;
@@ -19,7 +40,6 @@ exports.registerUser = async (req, res) => {
         const formattedPhone = formatPhone(phone);
         const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
-        // DEV BYPASS: If SMS credentials not configured, skip SMS and auto-verify
         if (!process.env.TEXTLK_API_TOKEN || !process.env.TEXTLK_SENDER_ID) {
             console.warn('⚠️  SMS credentials missing — DEV MODE: auto-verifying user');
             const salt = await bcrypt.genSalt(10);
@@ -27,7 +47,7 @@ exports.registerUser = async (req, res) => {
             const newUser = new User({
                 name, email, password: hashedPassword, role,
                 phone: formattedPhone, skills, bio, location,
-                otp: null, isVerified: true, // skip OTP step
+                otp: null, isVerified: true,
             });
             await newUser.save();
             return res.status(201).json({ msg: 'Registered (dev mode — SMS skipped)', phone: formattedPhone });
@@ -54,17 +74,10 @@ exports.registerUser = async (req, res) => {
                 const hashedPassword = await bcrypt.hash(password, salt);
 
                 const newUser = new User({
-                    name,
-                    email,
-                    password: hashedPassword,
-                    role,
-                    phone: formattedPhone,
-                    skills,
-                    bio,
+                    name, email, password: hashedPassword, role,
+                    phone: formattedPhone, skills, bio,
                     location: location || { type: 'Point', coordinates: [0, 0] },
-                    otp: generatedOtp,
-                    isVerified: false,
-                    expireAt: new Date()
+                    otp: generatedOtp, isVerified: false, expireAt: new Date()
                 });
 
                 await newUser.save();
@@ -72,12 +85,10 @@ exports.registerUser = async (req, res) => {
             } else {
                 return res.status(400).json({ error: 'Failed to send SMS' });
             }
-
         } catch (smsErr) {
             console.error("SMS Gateway Error:", smsErr.response ? smsErr.response.data : smsErr.message);
             return res.status(500).json({ error: 'SMS Service Unreachable.' });
         }
-
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -92,29 +103,20 @@ exports.verifyOTP = async (req, res) => {
 
         const user = await User.findOne({ phone: formattedPhone, otp: stringOtp });
 
-        if (!user) {
-            return res.status(400).json({ msg: 'Invalid or expired OTP' });
-        }
+        if (!user) return res.status(400).json({ msg: 'Invalid or expired OTP' });
 
         user.isVerified = true;
         user.otp = null;
-        user.expireAt = undefined; // Cancel the TTL delete timer
+        user.expireAt = undefined;
 
         await user.save();
 
-        const payload = {
-            user: { id: user.id }
-        };
+        const payload = { user: { id: user.id } };
 
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' },
-            (err, token) => {
-                if (err) throw err;
-                res.status(200).json({ msg: 'Account verified successfully', token, user });
-            }
-        );
+        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
+            if (err) throw err;
+            res.status(200).json({ msg: 'Account verified successfully', token, user });
+        });
     } catch (err) {
         console.error("Verification Error:", err.message);
         res.status(500).json({ error: 'Server error' });
@@ -122,33 +124,20 @@ exports.verifyOTP = async (req, res) => {
 };
 
 // ─── POST /api/auth/login ────────────────────────────────────────────────────
-// Returns JWT token for use with protected routes
 exports.loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        // 1. Find user
         const user = await User.findOne({ email });
         if (!user) return res.status(400).json({ msg: 'Invalid credentials' });
 
-        // 2. Check if verified
         if (!user.isVerified) {
-            return res.status(401).json({
-                msg: 'Account not verified. Please complete OTP verification.',
-                unverified: true
-            });
+            return res.status(401).json({ msg: 'Account not verified. Please complete OTP verification.', unverified: true });
         }
 
-        // 3. Check password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
-        // 4. Sign JWT (payload: { id } — matches auth middleware)
-        const token = jwt.sign(
-            { id: user._id },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.json({
             token,
@@ -159,7 +148,10 @@ exports.loginUser = async (req, res) => {
                 role: user.role,
                 phone: user.phone,
                 skills: user.skills,
-                location: user.location
+                location: user.location,
+                profileImage: user.profileImage,
+                bio: user.bio,
+                status: user.status
             }
         });
     } catch (err) {
@@ -167,25 +159,18 @@ exports.loginUser = async (req, res) => {
         res.status(500).json({ error: 'Server error', details: err.message });
     }
 };
+
 // ─── PUT /api/auth/change-password ───────────────────────────────────────────
 exports.changePassword = async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
-
-        // req.user is set by the protect middleware
         const user = await User.findById(req.user._id);
 
-        if (!user) {
-            return res.status(404).json({ msg: 'User not found' });
-        }
+        if (!user) return res.status(404).json({ msg: 'User not found' });
 
-        // Verify old password
         const isMatch = await bcrypt.compare(oldPassword, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ msg: 'Incorrect current password' });
-        }
+        if (!isMatch) return res.status(400).json({ msg: 'Incorrect current password' });
 
-        // Hash and save new password
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
@@ -196,18 +181,25 @@ exports.changePassword = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
+
 // ─── PUT /api/auth/profile ───────────────────────────────────────────────────
-// Updates the user's bio, status, and profile image
 exports.updateProfile = async (req, res) => {
     try {
-        const { bio, status, profileImage } = req.body;
-        const user = await User.findById(req.user._id);
+        const { bio, status, name } = req.body;
+        // The file info is in req.file if uploaded
+        const user = await User.findById(req.user._id || req.user.id);
 
         if (!user) return res.status(404).json({ msg: 'User not found' });
 
         if (bio !== undefined) user.bio = bio;
         if (status !== undefined) user.status = status;
-        if (profileImage !== undefined) user.profileImage = profileImage;
+        if (name !== undefined) user.name = name;
+
+        // If a new image was passed via multipart/form-data
+        if (req.file) {
+            const imageUrl = await uploadToCloudinary(req.file.buffer);
+            user.profileImage = imageUrl;
+        }
 
         await user.save();
 
@@ -227,7 +219,6 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
-// Example of the missing controller function
 exports.getWorkerById = async (req, res) => {
     try {
         const worker = await User.findById(req.params.workerId).select('name bio profileImage status');
