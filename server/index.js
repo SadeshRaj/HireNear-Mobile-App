@@ -3,6 +3,8 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const os = require('os');
+const http = require('http'); // 1. Declared once here
+const { Server } = require('socket.io'); // 2. Declared once here
 const cloudinary = require('cloudinary').v2;
 const connectDB = require('./src/config/db');
 
@@ -15,16 +17,23 @@ const bookingRoutes = require('./src/routes/bookingRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const supportRoutes = require('./src/routes/supportRoutes');
+const messageRoutes = require('./src/routes/messageRoutes');
+
+const socketHandler = require('./src/config/socket');
+const SupportMessage = require('./src/models/SupportMessage');
 
 const app = express();
-const http = require('http');
-const { Server } = require('socket.io');
 
+// --- INITIALIZE SERVER & SOCKET.IO ---
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: '*' }
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
 
+// Pass io to express app for use in routes if needed
 app.set('io', io);
 
 // --- CLOUDINARY CONFIG ---
@@ -40,8 +49,6 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Static files for local uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
@@ -53,9 +60,9 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/messages', messageRoutes);
 
-const SupportMessage = require('./src/models/SupportMessage');
-
+// --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
     console.log('Socket connected:', socket.id);
 
@@ -82,28 +89,21 @@ io.on('connection', (socket) => {
             });
             await newMsg.save();
 
-            // Emit to admin room
             io.to('admin_room').emit('receiveMessage', newMsg);
-
-            // Emit to user room
             const targetUser = isAdmin ? receiverId : senderId;
             io.to(`user_${targetUser}`).emit('receiveMessage', newMsg);
 
-            // ==========================================
-            // IDEA 1: AUTOMATIC GREETING FOR FIRST MESSAGE
-            // ==========================================
+            // Auto-reply logic
             if (!isAdmin) {
-                // Check if this is the very first message involving this user
                 const messageCount = await SupportMessage.countDocuments({
                     $or: [{ senderId: senderId }, { receiverId: senderId }]
                 });
 
-                // If count is 1, it means the message they just sent is their first ever
                 if (messageCount === 1) {
                     const autoReplyMsg = new SupportMessage({
-                        senderId: null, // Admin is null
+                        senderId: null,
                         receiverId: senderId,
-                        message: "Hi there! 👋 Thanks for reaching out to HireNear Support. We have received your message and an admin will be with you shortly. How can we help you today?",
+                        message: "Hi there! 👋 Thanks for reaching out to HireNear Support. We'll be with you shortly.",
                         image: null,
                         isAdmin: true,
                         read: false
@@ -111,15 +111,12 @@ io.on('connection', (socket) => {
 
                     await autoReplyMsg.save();
 
-                    // Send the auto-reply after a 1.5 second delay to make it feel natural
                     setTimeout(() => {
                         io.to('admin_room').emit('receiveMessage', autoReplyMsg);
                         io.to(`user_${senderId}`).emit('receiveMessage', autoReplyMsg);
                     }, 1500);
                 }
             }
-            // ==========================================
-
         } catch (err) {
             console.error('Socket message error:', err);
         }
@@ -130,6 +127,10 @@ io.on('connection', (socket) => {
     });
 });
 
+// Initialize external Socket handlers if you have them
+socketHandler(io);
+
+// --- START SERVER ---
 const PORT = process.env.PORT || 4000;
 
 const getLocalIP = () => {
@@ -138,7 +139,7 @@ const getLocalIP = () => {
         const iface = interfaces[devName];
         for (let i = 0; i < iface.length; i++) {
             const alias = iface[i];
-            if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+            if (alias.family === 'IPv4' && !alias.internal) {
                 return alias.address;
             }
         }
