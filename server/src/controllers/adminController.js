@@ -31,7 +31,7 @@ exports.updateUserStatus = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
-        
+
         user.accountStatus = req.body.accountStatus;
         await user.save();
         res.json({ msg: 'User account status updated', user });
@@ -91,5 +91,49 @@ exports.getAllInvoices = async (req, res) => {
         res.json(invoices);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ==========================================
+// DASHBOARD OVERVIEW AGGREGATION (UPDATED)
+// ==========================================
+exports.getDashboardOverview = async (req, res) => {
+    try {
+        // 1. TOP LEVEL METRICS
+        const totalUsers = await User.countDocuments({ role: { $ne: 'Admin' } });
+        const activeJobs = await JobPost.countDocuments({ status: 'Open' }); // Change 'Open' if your active status is different
+        const totalBids = await Bid.countDocuments();
+
+        // 2. TOP CATEGORIES (Groups jobs by category and counts them)
+        const categoryData = await JobPost.aggregate([
+            { $group: { _id: '$category', jobs: { $sum: 1 } } },
+            { $project: { name: '$_id', jobs: 1, _id: 0 } },
+            { $sort: { jobs: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // 3. RECENT ACTIVITY
+        const recentJobs = await JobPost.find()
+            .sort({ createdAt: -1 })
+            .limit(4)
+            .populate('clientId', 'name');
+
+        const recentActivity = recentJobs.map(job => ({
+            id: job._id,
+            action: 'New job posted',
+            user: job.clientId ? job.clientId.name : 'Unknown Client',
+            time: new Date(job.createdAt).toLocaleDateString(),
+            type: 'job'
+        }));
+
+        res.json({
+            metrics: { totalUsers, activeJobs, totalBids },
+            categoryData,
+            recentActivity
+        });
+
+    } catch (err) {
+        console.error("Overview Stats Error:", err);
+        res.status(500).json({ error: 'Failed to fetch real database stats' });
     }
 };
