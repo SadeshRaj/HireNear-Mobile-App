@@ -60,7 +60,12 @@ export default function PortfolioModal({ worker, items, onClose, onUpdate }) {
                                         <Trash2 size={16} />
                                     </button>
 
-                                    <h4 className="font-bold text-lg text-slate-900 mb-2 pr-8">{item.title}</h4>
+                                    <div className="flex justify-between items-start mb-2 pr-8">
+                                        <h4 className="font-bold text-lg text-slate-900">{item.title}</h4>
+                                        <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md">
+                                            {new Date(item.createdAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
                                     <p className="text-sm text-slate-600 mb-5 leading-relaxed">{item.description}</p>
                                     
                                     {item.images && item.images.length > 0 && (

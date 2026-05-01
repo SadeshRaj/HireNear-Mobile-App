@@ -6,7 +6,7 @@ const Invoice = require('../models/Invoice');
 
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select('-password');
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
         res.json(users);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -60,7 +60,7 @@ exports.deletePortfolio = async (req, res) => {
 
 exports.getAllJobs = async (req, res) => {
     try {
-        const jobs = await JobPost.find().populate('clientId', 'name email');
+        const jobs = await JobPost.find().populate('clientId', 'name email').sort({ createdAt: -1 });
         res.json(jobs);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -69,7 +69,7 @@ exports.getAllJobs = async (req, res) => {
 
 exports.getAllBids = async (req, res) => {
     try {
-        const bids = await Bid.find().populate('workerId', 'name email').populate('jobId', 'title description');
+        const bids = await Bid.find().populate('workerId', 'name email').populate('jobId', 'title description').sort({ createdAt: -1 });
         res.json(bids);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -78,7 +78,7 @@ exports.getAllBids = async (req, res) => {
 
 exports.getAllPortfolios = async (req, res) => {
     try {
-        const portfolios = await PortfolioItem.find().populate('workerId', 'name email');
+        const portfolios = await PortfolioItem.find().populate('workerId', 'name email').sort({ createdAt: -1 });
         res.json(portfolios);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -87,7 +87,7 @@ exports.getAllPortfolios = async (req, res) => {
 
 exports.getAllInvoices = async (req, res) => {
     try {
-        const invoices = await Invoice.find().populate('workerId', 'name email').populate('clientId', 'name email');
+        const invoices = await Invoice.find().populate('workerId', 'name email').populate('clientId', 'name email').sort({ createdAt: -1 });
         res.json(invoices);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
