@@ -13,6 +13,7 @@ const jobRoutes = require('./src/routes/jobRoutes');
 const portfolioRoutes = require('./src/routes/portfolioRoutes'); // New Route
 const bookingRoutes = require('./src/routes/bookingRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/portfolio', portfolioRoutes); // Mount Portfolio
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT || 4000;
 
