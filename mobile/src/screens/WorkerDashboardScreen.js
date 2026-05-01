@@ -41,9 +41,10 @@ export default function WorkerDashboardScreen({ navigation }) {
     const [refreshing, setRefreshing] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
     const [activeDistance, setActiveDistance] = useState(20);
-
+    const [activeBudget, setActiveBudget] = useState('All');
     const [currentUser, setCurrentUser] = useState(null);
     const workerName = currentUser?.name ? currentUser.name.split(' ')[0] : 'there';
+
     const [workerLocation, setWorkerLocation] = useState(null);
 
     // Custom Toast State
@@ -95,12 +96,21 @@ export default function WorkerDashboardScreen({ navigation }) {
             const token = await AsyncStorage.getItem('token');
             let url;
 
+            let params = [];
+            if (activeCategory !== 'All') params.push(`category=${activeCategory}`);
+            if (activeBudget === 'Under 5k') params.push(`maxBudget=5000`);
+            else if (activeBudget === '5k - 15k') { params.push(`minBudget=5000`); params.push(`maxBudget=15000`); }
+            else if (activeBudget === '15k+') params.push(`minBudget=15000`);
+
+            const queryString = params.length > 0 ? params.join('&') : '';
+
             if (workerLocation && activeDistance !== 'All') {
                 url = `${API_BASE_URL}/jobs/nearby?lat=${workerLocation.lat}&lng=${workerLocation.lng}&maxDistanceKm=${activeDistance}`;
-                if (activeCategory !== 'All') url += `&category=${activeCategory}`;
+                if (queryString) url += `&${queryString}`;
             } else {
                 url = `${API_BASE_URL}/jobs`;
-                if (activeCategory !== 'All') url += `?category=${activeCategory}`;
+                if (queryString) url += `?${queryString}`;
+
             }
 
             const response = await fetch(url, {
@@ -119,7 +129,7 @@ export default function WorkerDashboardScreen({ navigation }) {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [workerLocation, activeCategory, activeDistance]);
+    }, [workerLocation, activeCategory, activeDistance, activeBudget]);
 
     useEffect(() => {
         setLoading(true);
@@ -392,7 +402,7 @@ export default function WorkerDashboardScreen({ navigation }) {
                 </View>
             )}
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 12 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
                 {CATEGORIES.map(cat => (
                     <TouchableOpacity
                         key={cat} onPress={() => setActiveCategory(cat)}
@@ -406,6 +416,30 @@ export default function WorkerDashboardScreen({ navigation }) {
                     </TouchableOpacity>
                 ))}
             </ScrollView>
+
+            <View style={{ paddingHorizontal: 20, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '800', marginRight: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Budget</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingRight: 20 }}>
+                    {['All', 'Under 5k', '5k - 15k', '15k+'].map(budget => {
+                        const isActive = activeBudget === budget;
+                        return (
+                            <TouchableOpacity
+                                key={budget}
+                                onPress={() => setActiveBudget(budget)}
+                                style={{
+                                    marginRight: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
+                                    backgroundColor: isActive ? '#059669' : '#f8fafc',
+                                    borderWidth: 1, borderColor: isActive ? '#059669' : '#e2e8f0'
+                                }}
+                            >
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? 'white' : '#64748b' }}>
+                                    {budget}
+                                </Text>
+                            </TouchableOpacity>
+                        )
+                    })}
+                </ScrollView>
+            </View>
 
             {loading ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
