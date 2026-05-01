@@ -8,6 +8,7 @@ import BidDetailScreen from '../screens/Client/BidDetailScreen';
 import BookingDetailsScreen from '../screens/Client/BookingDetailsScreen';
 import WorkerBookingDetailsScreen from '../screens/Worker/WorkerBookingDetailsScreen';
 import ChatScreen from '../screens/ChatScreen';
+import SupportChatScreen from '../screens/SupportChatScreen';
 
 // Auth screens
 import LoginScreen from '../screens/LoginScreen';
@@ -93,6 +94,7 @@ export default function AppNavigator() {
 
             <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
             <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="SupportChat" component={SupportChatScreen} />
 
             {/* Updated Invoice Screens */}
             <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
