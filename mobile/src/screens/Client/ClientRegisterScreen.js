@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingVi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { API_BASE_URL } from '../../config'; // ADD THIS IMPORT
+import { API_BASE_URL } from '../../../config'; // ADD THIS IMPORT
 
 export default function ClientRegisterScreen({ navigation }) {
     const [name, setName] = useState('');

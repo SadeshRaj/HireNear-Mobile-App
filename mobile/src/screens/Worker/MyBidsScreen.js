@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import BidCard from '../components/BidCard';
-import { getMyBids, withdrawBid } from '../services/bidService';
+import BidCard from '../../components/BidCard';
+import { getMyBids, withdrawBid } from '../../services/bidService';
 
 const FILTERS = ['All', 'pending', 'accepted', 'rejected', 'withdrawn'];
 

@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL } from '../../../config';
 
 export default function MyJobPostsScreen({ navigation, route }) {
     const { user } = route.params || {};
@@ -17,7 +17,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState('open');
-    // New state for Sub-Tabs under the "Accepted" section
     const [subTab, setSubTab] = useState('active');
 
     const fetchMyJobs = async () => {
@@ -124,7 +123,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                         </Text>
                     </View>
 
-                    {/* Status Badges */}
                     {!isAccepted && !isCompleted && !isCancelled && (
                         <TouchableOpacity
                             onPress={() => toggleStatus(item._id, item.status)}
@@ -170,22 +168,35 @@ export default function MyJobPostsScreen({ navigation, route }) {
                 </View>
 
                 <View className="flex-row gap-2 border-t border-gray-50 pt-4">
-                    {/* Primary Action Button Logic */}
-                    {(isActionable) ? (
-                        <TouchableOpacity
-                            className={`flex-1 flex-row justify-center items-center py-2.5 rounded-xl ${isCompleted ? 'bg-slate-800' : 'bg-emerald-600'}`}
-                            onPress={() => navigation.navigate('BookingDetails', { jobId: item._id, jobTitle: item.title })}
-                        >
-                            <MaterialCommunityIcons
-                                name={isCompleted ? "file-check-outline" : "progress-clock"}
-                                size={16}
-                                color="white"
-                                style={{ marginRight: 6 }}
-                            />
-                            <Text className="text-white text-xs font-bold">
-                                {isCompleted ? 'View Job Summary' : 'Track Progress'}
-                            </Text>
-                        </TouchableOpacity>
+                    {isActionable ? (
+                        <>
+                            <TouchableOpacity
+                                className={`flex-1 flex-row justify-center items-center py-2.5 rounded-xl ${isCompleted ? 'bg-slate-800' : 'bg-emerald-600'}`}
+                                onPress={() => navigation.navigate('BookingDetails', { jobId: item._id, jobTitle: item.title })}
+                            >
+                                <MaterialCommunityIcons
+                                    name={isCompleted ? "file-check-outline" : "progress-clock"}
+                                    size={16}
+                                    color="white"
+                                    style={{ marginRight: 6 }}
+                                />
+                                <Text className="text-white text-xs font-bold">
+                                    {isCompleted ? 'View Job Summary' : 'Track Progress'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* CHAT ACTION BUTTON */}
+                            <TouchableOpacity
+                                className="w-12 h-12 bg-indigo-50 border border-indigo-100 justify-center items-center rounded-xl"
+                                onPress={() => navigation.navigate('Chat', {
+                                    bookingId: item.bookingId, // Assumes your API returns this
+                                    receiverName: "Worker", // Ideally pass item.workerName if available
+                                    receiverId: item.workerId
+                                })}
+                            >
+                                <Ionicons name="chatbubble-ellipses" size={22} color="#4F46E5" />
+                            </TouchableOpacity>
+                        </>
                     ) : !isCancelled && (
                         <TouchableOpacity
                             className="flex-1 flex-row justify-center items-center py-2.5 rounded-xl bg-slate-900"
@@ -195,7 +206,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                         </TouchableOpacity>
                     )}
 
-                    {/* Edit/Delete only for non-accepted/completed jobs */}
                     {!isAccepted && !isCompleted && !isCancelled && (
                         <>
                             <TouchableOpacity
@@ -215,7 +225,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                         </>
                     )}
 
-                    {/* Cancelled placeholder */}
                     {isCancelled && (
                         <View className="flex-1 py-2.5 items-center justify-center bg-slate-50 rounded-xl">
                             <Text className="text-slate-400 text-xs font-bold italic">This job was cancelled</Text>
@@ -226,12 +235,10 @@ export default function MyJobPostsScreen({ navigation, route }) {
         );
     };
 
-    // Updated Filtering Logic for Sub-Tabs
     const filteredJobs = jobs.filter(job => {
         if (activeTab === 'open') {
             return job.status === 'open' || job.status === 'closed';
         } else {
-            // Accepted Parent Tab
             if (subTab === 'active') return job.status === 'accepted';
             if (subTab === 'completed') return job.status === 'completed';
             if (subTab === 'history') return job.status === 'completed' || job.status === 'cancelled';
@@ -254,7 +261,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                 </TouchableOpacity>
             </View>
 
-            {/* Main Tabs */}
             <View className="flex-row bg-white p-1.5 rounded-2xl mb-4 border border-slate-100 shadow-sm">
                 <TouchableOpacity
                     onPress={() => setActiveTab('open')}
@@ -270,7 +276,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                 </TouchableOpacity>
             </View>
 
-            {/* NEW: Sub-Tabs for the Accepted section */}
             {activeTab === 'accepted' && (
                 <View className="flex-row gap-2 mb-5">
                     {['active', 'completed', 'history'].map((tab) => (

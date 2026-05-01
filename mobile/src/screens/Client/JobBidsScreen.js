@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL } from '../../../config';
 
 const BidItem = ({ item, onAction, onNavigatePortfolio, onNavigateDetail }) => (
     <View className="bg-white rounded-[32px] p-5 mb-4 shadow-sm border border-gray-100">
