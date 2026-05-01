@@ -20,6 +20,11 @@ const protect = async (req, res, next) => {
                 return res.status(401).json({ msg: 'User not found. Please log in again.' });
             }
 
+            // Immediately reject requests if the account is suspended
+            if (req.user.accountStatus === 'Suspended') {
+                return res.status(403).json({ msg: 'Your account has been temporarily suspended by the administrator.', isSuspended: true });
+            }
+
             return next();
         } catch (error) {
             return res.status(401).json({ msg: 'Not authorized, token failed' });
