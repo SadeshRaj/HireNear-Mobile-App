@@ -40,6 +40,7 @@ export default function JobsTab() {
                             <th className="pb-4 font-semibold">Client</th>
                             <th className="pb-4 font-semibold">Category</th>
                             <th className="pb-4 font-semibold">Budget</th>
+                            <th className="pb-4 font-semibold">Date Posted</th>
                             <th className="pb-4 font-semibold">Status</th>
                         </tr>
                     </thead>
@@ -64,6 +65,9 @@ export default function JobsTab() {
                                     </span>
                                 </td>
                                 <td className="py-4 font-bold text-slate-800">Rs. {job.budget}</td>
+                                <td className="py-4 text-slate-500 font-medium text-sm">
+                                    {new Date(job.createdAt).toLocaleDateString()}
+                                </td>
                                 <td className="py-4">
                                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                                         job.status === 'open' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 

@@ -40,6 +40,7 @@ export default function TransactionsTab() {
                             <th className="pb-4 font-semibold">Worker</th>
                             <th className="pb-4 font-semibold">Amount</th>
                             <th className="pb-4 font-semibold">Slip</th>
+                            <th className="pb-4 font-semibold">Date</th>
                             <th className="pb-4 font-semibold">Status</th>
                         </tr>
                     </thead>
@@ -69,6 +70,9 @@ export default function TransactionsTab() {
                                     ) : (
                                         <span className="text-slate-400">N/A</span>
                                     )}
+                                </td>
+                                <td className="py-4 text-slate-500 font-medium text-sm">
+                                    {new Date(inv.createdAt).toLocaleDateString()}
                                 </td>
                                 <td className="py-4">
                                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${
