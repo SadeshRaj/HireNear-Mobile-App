@@ -134,6 +134,10 @@ exports.loginUser = async (req, res) => {
             return res.status(401).json({ msg: 'Account not verified. Please complete OTP verification.', unverified: true });
         }
 
+        if (user.accountStatus === 'Suspended') {
+            return res.status(403).json({ msg: 'Your account has been temporarily suspended by the administrator.' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 

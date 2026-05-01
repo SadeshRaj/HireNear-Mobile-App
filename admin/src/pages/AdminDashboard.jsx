@@ -1,38 +1,83 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Briefcase, FileText,
-    Settings, LogOut, Search, Bell, TrendingUp
+    LogOut, Search, Bell, TrendingUp, Image as ImageIcon
 } from 'lucide-react';
+
+import OverviewTab from '../components/OverviewTab';
+import UsersTab from '../components/UsersTab';
+import JobsTab from '../components/JobsTab';
+import BidsTab from '../components/BidsTab';
+import TransactionsTab from '../components/TransactionsTab';
+import PortfoliosTab from '../components/PortfoliosTab';
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('overview');
+    const [adminName, setAdminName] = useState('Admin');
+
+    useEffect(() => {
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            navigate('/');
+        }
+        
+        const adminData = localStorage.getItem('adminData');
+        if (adminData) {
+            try {
+                const parsed = JSON.parse(adminData);
+                if (parsed.name) setAdminName(parsed.name);
+            } catch (e) {
+                console.error('Failed to parse admin data');
+            }
+        }
+    }, [navigate]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminData');
+        navigate('/');
+    };
+
+    const renderContent = () => {
+        switch(activeTab) {
+            case 'overview': return <OverviewTab />;
+            case 'users': return <UsersTab />;
+            case 'jobs': return <JobsTab />;
+            case 'bids': return <BidsTab />;
+            case 'portfolios': return <PortfoliosTab />;
+            case 'transactions': return <TransactionsTab />;
+            default: return <OverviewTab />;
+        }
+    };
 
     return (
         <div className="flex h-screen bg-[#F8F9FB]">
             {/* Sidebar */}
             <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col m-4 rounded-[32px] shadow-lg overflow-hidden">
                 <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-                    <div className="bg-emerald-500 p-2 rounded-xl">
+                    <div className="bg-emerald-500 p-2 rounded-xl shadow-inner">
                         <Briefcase size={20} className="text-white" />
                     </div>
                     <span className="text-white font-extrabold text-xl tracking-wide">HireNear</span>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-2 mt-4">
-                    <NavItem icon={<LayoutDashboard />} label="Overview" active />
-                    <NavItem icon={<Users />} label="Users" />
-                    <NavItem icon={<Briefcase />} label="Jobs & Services" />
-                    <NavItem icon={<FileText />} label="Transactions" />
-                    <NavItem icon={<Settings />} label="Settings" />
+                <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto custom-scrollbar">
+                    <NavItem icon={<LayoutDashboard />} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+                    <NavItem icon={<Users />} label="Users & Workers" active={activeTab === 'users'} onClick={() => setActiveTab('users')} />
+                    <NavItem icon={<Briefcase />} label="Job Postings" active={activeTab === 'jobs'} onClick={() => setActiveTab('jobs')} />
+                    <NavItem icon={<FileText />} label="Placed Bids" active={activeTab === 'bids'} onClick={() => setActiveTab('bids')} />
+                    <NavItem icon={<ImageIcon />} label="Worker Portfolios" active={activeTab === 'portfolios'} onClick={() => setActiveTab('portfolios')} />
+                    <NavItem icon={<TrendingUp />} label="Transactions" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">
                     <button
-                        onClick={() => navigate('/')}
-                        className="flex items-center gap-3 text-slate-400 hover:text-red-400 w-full p-3 rounded-xl transition-colors font-medium"
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 text-slate-400 hover:text-red-400 w-full p-3 rounded-xl transition-colors font-medium group"
                     >
-                        <LogOut size={20} /> Logout
+                        <LogOut size={20} className="group-hover:text-red-400 transition-colors" /> Logout
                     </button>
                 </div>
             </aside>
@@ -42,8 +87,8 @@ export default function AdminDashboard() {
                 {/* Top Header */}
                 <header className="h-24 flex items-center justify-between px-10">
                     <div>
-                        <h1 className="text-2xl font-extrabold text-slate-900">Platform Overview</h1>
-                        <p className="text-slate-500 font-medium text-sm">Welcome back, Super Admin</p>
+                        <h1 className="text-2xl font-extrabold text-slate-900 capitalize">{activeTab.replace('-', ' ')}</h1>
+                        <p className="text-slate-500 font-medium text-sm">Welcome back, {adminName}</p>
                     </div>
 
                     <div className="flex items-center gap-6">
@@ -51,63 +96,40 @@ export default function AdminDashboard() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="text"
-                                placeholder="Search..."
-                                className="pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 shadow-sm w-64"
+                                placeholder="Search data..."
+                                className="pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 shadow-sm w-64 transition-shadow"
                             />
                         </div>
 
-                        <button className="relative bg-white p-2.5 rounded-full shadow-sm border border-gray-100 text-slate-600">
+                        <button className="relative bg-white p-2.5 rounded-full shadow-sm border border-gray-100 text-slate-600 hover:text-emerald-500 transition-colors">
                             <Bell size={20} />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
                         </button>
 
-                        <div className="w-10 h-10 bg-emerald-100 rounded-full border-2 border-white shadow-sm overflow-hidden">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" />
+                        <div className="w-10 h-10 bg-emerald-100 rounded-full border-2 border-white shadow-sm overflow-hidden flex items-center justify-center font-bold text-emerald-700">
+                            {adminName.charAt(0).toUpperCase()}
                         </div>
                     </div>
                 </header>
 
                 {/* Dashboard Content */}
                 <div className="flex-1 overflow-auto px-10 pb-10">
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-6 mb-8">
-                        <StatCard title="Total Users" value="12,450" trend="+12%" icon={<Users className="text-blue-600" />} bg="bg-blue-50" />
-                        <StatCard title="Active Jobs" value="842" trend="+5%" icon={<Briefcase className="text-emerald-600" />} bg="bg-emerald-50" />
-                        <StatCard title="Total Revenue" value="$45,231" trend="+18%" icon={<TrendingUp className="text-amber-600" />} bg="bg-amber-50" />
-                    </div>
-
-                    {/* Recent Activity Table Placeholder */}
-                    <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
-                        <h2 className="text-xl font-bold text-slate-900 mb-6">Recent Platform Activity</h2>
-                        <div className="text-center py-10 text-slate-400 font-medium">
-                            Activity logs will populate here once the backend is connected.
-                        </div>
-                    </div>
+                    {renderContent()}
                 </div>
             </main>
         </div>
     );
 }
 
-// Helper Components
-const NavItem = ({ icon, label, active }) => (
-    <a href="#" className={`flex items-center gap-3 p-3 rounded-2xl transition-colors font-medium ${
-        active ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-    }`}>
+// Helper Component
+const NavItem = ({ icon, label, active, onClick }) => (
+    <button 
+        onClick={onClick}
+        className={`flex items-center gap-3 w-full p-3 rounded-2xl transition-all font-medium ${
+            active ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+        }`}
+    >
         {icon}
         {label}
-    </a>
-);
-
-const StatCard = ({ title, value, trend, icon, bg }) => (
-    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex items-center justify-between">
-        <div>
-            <p className="text-slate-500 text-sm font-bold mb-1 uppercase tracking-wider">{title}</p>
-            <h3 className="text-3xl font-extrabold text-slate-900">{value}</h3>
-            <p className="text-emerald-600 text-sm font-bold mt-2">{trend} this month</p>
-        </div>
-        <div className={`p-4 rounded-[24px] ${bg}`}>
-            {icon}
-        </div>
-    </div>
+    </button>
 );

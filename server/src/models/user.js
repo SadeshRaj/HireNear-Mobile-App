@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema({
     skills: { type: [String], default: [] },
     bio: { type: String, default: "No description provided yet." },
     status: { type: String, enum: ['Available', 'Working', 'Offline'], default: 'Available' }, // Added Status
+    accountStatus: { type: String, enum: ['Active', 'Suspended'], default: 'Active' }, // Admin toggle for suspension
 
     rating: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0 }
