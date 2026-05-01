@@ -1,0 +1,95 @@
+const User = require('../models/user');
+const JobPost = require('../models/JobPost');
+const Bid = require('../models/Bid');
+const PortfolioItem = require('../models/PortfolioItem');
+const Invoice = require('../models/Invoice');
+
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find().select('-password');
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.getUserById = async (req, res) => {
+    try {
+        if (!req.params.id || req.params.id === 'undefined') {
+            return res.status(400).json({ msg: 'Invalid user ID' });
+        }
+        const user = await User.findById(req.params.id).select('-password');
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        res.json(user);
+    } catch (err) {
+        console.error("getUserById error:", err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.updateUserStatus = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+        
+        user.accountStatus = req.body.accountStatus;
+        await user.save();
+        res.json({ msg: 'User account status updated', user });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.deleteUser = async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ msg: 'User deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.deletePortfolio = async (req, res) => {
+    try {
+        await PortfolioItem.findByIdAndDelete(req.params.id);
+        res.json({ msg: 'Portfolio deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.getAllJobs = async (req, res) => {
+    try {
+        const jobs = await JobPost.find().populate('clientId', 'name email');
+        res.json(jobs);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.getAllBids = async (req, res) => {
+    try {
+        const bids = await Bid.find().populate('workerId', 'name email').populate('jobId', 'title description');
+        res.json(bids);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.getAllPortfolios = async (req, res) => {
+    try {
+        const portfolios = await PortfolioItem.find().populate('workerId', 'name email');
+        res.json(portfolios);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.getAllInvoices = async (req, res) => {
+    try {
+        const invoices = await Invoice.find().populate('workerId', 'name email').populate('clientId', 'name email');
+        res.json(invoices);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
