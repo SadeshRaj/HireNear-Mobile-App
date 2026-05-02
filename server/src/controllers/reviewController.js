@@ -5,46 +5,57 @@ const Booking =require('../models/Booking');
 // 1. CREATE REVIEW
 exports.createReview = async (req, res) => {
     try {
-        const { bookingId, clientId, workerId, rating, comment } = req.body;
+        const { rating, comment, bookingId, clientId, workerId } = req.body;
+        const images = req.files ? req.files.map(file => file.path) : [];
 
-        const images = req.files ? req.files.map(file => file.path) : (req.body.images || []);
-
-        if (!bookingId || !clientId || !workerId || !rating || !comment) {
-            return res.status(400).json({ msg: 'Please provide all required fields' });
-        }
-
+        // 1. Save the new review
         const newReview = new Review({
+            rating,
+            comment,
             bookingId,
             clientId,
             workerId,
-            rating,
-            comment,
             images
         });
 
         await newReview.save();
 
-        const booking = await Booking.findById(req.body.bookingId);
+        // 2. LINKING LOGIC: Use unique variable names (reviewBooking)
+        try {
+            // Changed 'booking' to 'reviewBooking' to avoid the "already declared" error
+            const reviewBooking = await Booking.findById(bookingId);
 
-        if (booking) {
-            booking.reviewId = newReview._id;
-            await booking.save();
+            if (reviewBooking) {
+                // Attach reviewId to the Booking
+                reviewBooking.reviewId = newReview._id;
+                await reviewBooking.save();
 
-            const jobId = booking.jobId || booking.job;
-            if (jobId) {
-                await JobPost.findByIdAndUpdate(jobId, { reviewId: newReview._id })
+                // Get the Job ID from the booking record
+                const targetJobId = reviewBooking.jobId || reviewBooking.job;
+
+                if (targetJobId) {
+                    // Update the JobPost so the UI knows it's reviewed
+                    await JobPost.findByIdAndUpdate(targetJobId, { reviewId: newReview._id });
+                    console.log("✅ Review linked successfully to Job:", targetJobId);
+                }
             }
+        } catch (linkError) {
+            console.error("Linking Warning:", linkError);
         }
 
+        // 3. SUCCESS RESPONSE
         res.status(201).json({
             success: true,
             msg: 'Review submitted successfully',
             review: newReview
         });
 
-    } catch(err) {
-        console.error("Create Review Error: ", err.message);
-        res.status(500).json({ error: 'Server error while creating review' });
+    } catch (error) {
+        console.error("Create Review Error:", error);
+        res.status(500).json({
+            success: false,
+            msg: 'Server error during review submission'
+        });
     }
 };
 
