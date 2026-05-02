@@ -78,13 +78,43 @@ export default function ChatScreen({ route, navigation }) {
     };
 
     const pickImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.7,
-        });
-        if (!result.canceled) {
-            console.log("Image Selected:", result.assets[0].uri);
+        console.log("📡 Uploading to:", `${SOCKET_URL}/api/messages/upload-image`);
+        try {
+            let result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],  // ✅ use string array instead
+                allowsEditing: true,
+                quality: 0.7,
+            });
+
+            if (!result.canceled) {
+                const uri = result.assets[0].uri;
+                console.log("✅ Image picked:", uri);
+
+                const formData = new FormData();
+                formData.append('image', {
+                    uri,
+                    type: 'image/jpeg',
+                    name: 'chat_image.jpg',
+                });
+
+                const response = await axios.post(
+                    `${SOCKET_URL}/api/messages/upload-image`,
+                    formData,
+                    { headers: { 'Content-Type': 'multipart/form-data' } }
+                );
+
+                if (response.data.success) {
+                    socket.current.emit("send_message", {
+                        bookingId,
+                        senderId: userId,
+                        receiverId,
+                        image: response.data.imageUrl,
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Image upload failed:", error.response?.data || error.message);
+            Alert.alert("Error", "Failed to send image.");
         }
     };
 

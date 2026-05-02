@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000/api";
@@ -11,36 +12,36 @@ const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || "http://localhost:4000"
 
 const socket = io(SOCKET_URL);
 
-export default function ChatListScreen({ navigation, route }) {
-    // Safely extract the user ID
-    const { user } = route.params || {};
-    const currentUserId = user?._id || user?.id;
-
+export default function WorkerchatlistScreen({ navigation }) {
+    const [currentUserId, setCurrentUserId] = useState(null);
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // 🔥 Fetch when screen is focused
+    // Load worker ID from storage
+    useEffect(() => {
+        const loadUser = async () => {
+            const userData = JSON.parse(await AsyncStorage.getItem('user'));
+            if (userData?._id) setCurrentUserId(userData._id);
+        };
+        loadUser();
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
-            fetchConversations();
+            if (currentUserId) fetchConversations();
         }, [currentUserId])
     );
 
     const fetchConversations = async () => {
         try {
-            if (!currentUserId) {
-                console.warn("⚠️ ChatListScreen: currentUserId is undefined. Cannot fetch chats.");
-                setLoading(false);
-                return;
-            }
-
+            if (!currentUserId) return;
             const response = await axios.get(`${API_URL}/messages/conversations/${currentUserId}`);
             if (response.data.success) {
                 setConversations(response.data.conversations);
             }
         } catch (error) {
-            console.error("Error fetching chats:", error);
+            console.error("Error fetching worker chats:", error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -52,11 +53,10 @@ export default function ChatListScreen({ navigation, route }) {
         fetchConversations();
     };
 
-    // ✅ REAL-TIME UPDATES
+    // Real-time updates
     useEffect(() => {
         if (!currentUserId) return;
 
-        // When messages are marked as read or new message arrives
         const handleRefresh = () => fetchConversations();
 
         socket.on('messages_marked_read', handleRefresh);
@@ -68,27 +68,12 @@ export default function ChatListScreen({ navigation, route }) {
         };
     }, [currentUserId]);
 
-    // 🛡️ BULLETPROOF NAVIGATION LOGIC
     const handleChatPress = (item) => {
-        // 1. Strict Validation Check
         if (!item._id || !currentUserId) {
-            console.error("❌ Navigation Blocked: Missing IDs", {
-                bookingId: item._id,
-                userId: currentUserId
-            });
             Alert.alert("Error", "Cannot open chat due to missing data.");
             return;
         }
 
-        // 2. Log exactly what we are sending so you can verify it in terminal
-        console.log("✅ Navigating to ChatScreen with:", {
-            bookingId: item._id,
-            receiverName: item.otherUserName,
-            receiverId: item.otherUserId,
-            userId: currentUserId
-        });
-
-        // 3. Navigate
         navigation.navigate('Chat', {
             bookingId: item._id,
             receiverName: item.otherUserName,
@@ -97,56 +82,55 @@ export default function ChatListScreen({ navigation, route }) {
         });
     };
 
-    const renderItem = ({ item }) => {
-        return (
-            <TouchableOpacity
-                className="flex-row items-center p-4 bg-white mb-3 mx-4 rounded-2xl shadow-sm border border-gray-100"
-                onPress={() => handleChatPress(item)}
-            >
-                {/* Avatar */}
-                <View className="w-14 h-14 bg-slate-100 rounded-full items-center justify-center border border-slate-200">
-                    <Ionicons name="person" size={28} color="#94a3b8" />
-
-                    {item.unreadCount > 0 && (
-                        <View className="absolute -top-1 -right-1 bg-red-500 h-5 w-5 rounded-full items-center justify-center border-2 border-white">
-                            <Text className="text-white text-[10px] font-bold">
-                                {item.unreadCount}
-                            </Text>
-                        </View>
-                    )}
-                </View>
-
-                <View className="flex-1 ml-4">
-                    <View className="flex-row justify-between items-center mb-1">
-                        <Text className="text-base font-bold text-slate-900" numberOfLines={1}>
-                            {item.jobTitle || item.otherUserName}
-                        </Text>
-
-                        <Text className="text-[11px] text-slate-400">
-                            {new Date(item.lastMessage.createdAt).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
+    const renderItem = ({ item }) => (
+        <TouchableOpacity
+            className="flex-row items-center p-4 bg-white mb-3 mx-4 rounded-2xl shadow-sm border border-gray-100"
+            onPress={() => handleChatPress(item)}
+        >
+            {/* Avatar */}
+            <View className="w-14 h-14 bg-slate-100 rounded-full items-center justify-center border border-slate-200">
+                <Ionicons name="person" size={28} color="#94a3b8" />
+                {item.unreadCount > 0 && (
+                    <View className="absolute -top-1 -right-1 bg-red-500 h-5 w-5 rounded-full items-center justify-center border-2 border-white">
+                        <Text className="text-white text-[10px] font-bold">
+                            {item.unreadCount}
                         </Text>
                     </View>
+                )}
+            </View>
 
-                    <View className="flex-row items-center mb-1">
-                        <Ionicons name="construct-outline" size={12} color="#2563eb" />
-                        <Text className="text-xs text-blue-600 font-semibold ml-1" numberOfLines={1}>
-                            {item.otherUserName} ({item.jobTitle || 'Job'})
-                        </Text>
-                    </View>
-
-                    <Text className="text-sm text-slate-500" numberOfLines={1}>
-                        {item.lastMessage.text ||
-                            (item.lastMessage.image ? "📷 Photo" : "📍 Location")}
+            <View className="flex-1 ml-4">
+                {/* Row 1: Job title (highlighted) + time */}
+                <View className="flex-row justify-between items-center mb-0.5">
+                    <Text className="text-base font-bold text-slate-900" numberOfLines={1}>
+                        {item.jobTitle || 'Job'}
+                    </Text>
+                    <Text className="text-[11px] text-slate-400">
+                        {new Date(item.lastMessage.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
                     </Text>
                 </View>
 
-                <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
-            </TouchableOpacity>
-        );
-    };
+                {/* Row 2: Client name */}
+                <View className="flex-row items-center mb-1">
+                    <Ionicons name="person-outline" size={11} color="#64748b" />
+                    <Text className="text-xs text-slate-500 font-semibold ml-1" numberOfLines={1}>
+                        {item.otherUserName}
+                    </Text>
+                </View>
+
+                {/* Row 3: Last message */}
+                <Text className="text-sm text-slate-500" numberOfLines={1}>
+                    {item.lastMessage.text ||
+                        (item.lastMessage.image ? "📷 Photo" : "📍 Location")}
+                </Text>
+            </View>
+
+            <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+        </TouchableOpacity>
+    );
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
@@ -154,10 +138,9 @@ export default function ChatListScreen({ navigation, route }) {
                 <View>
                     <Text className="text-2xl font-bold text-slate-900">Messages</Text>
                     <Text className="text-slate-500 text-xs mt-1">
-                        Direct inquiries & active jobs
+                        Client conversations & active jobs
                     </Text>
                 </View>
-
                 <TouchableOpacity onPress={onRefresh} className="p-2 bg-white rounded-full shadow-sm">
                     <Ionicons name="refresh" size={20} color="#0f172a" />
                 </TouchableOpacity>
@@ -181,13 +164,11 @@ export default function ChatListScreen({ navigation, route }) {
                             <View className="bg-slate-100 p-6 rounded-full mb-4">
                                 <Ionicons name="chatbubble-ellipses-outline" size={40} color="#94a3b8" />
                             </View>
-
                             <Text className="text-slate-900 font-bold text-lg">
                                 No messages yet
                             </Text>
-
                             <Text className="text-slate-500 text-center mt-2">
-                                When you message a worker or client about a job,
+                                When a client messages you about a job,
                                 the conversation will appear here.
                             </Text>
                         </View>

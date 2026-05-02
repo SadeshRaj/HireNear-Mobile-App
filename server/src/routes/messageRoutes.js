@@ -2,25 +2,29 @@ const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
+const upload = require('../middleware/upload'); // adjust path if needed
+
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 
 /**
- * @route   GET /api/messages/:bookingId
- * @desc    Get chat history for a specific job/booking
- */
-/**
  * @route   PUT /api/messages/mark-read
- * @desc    Mark all messages in a booking as read for the current user
  */
 router.put('/mark-read', async (req, res) => {
     try {
         const { bookingId, userId } = req.body;
 
-        // 1. Validate that we actually got strings
         if (!bookingId || !userId) {
             return res.status(400).json({ success: false, message: "IDs are required" });
         }
 
-        // 2. Validate format before converting to ObjectId
         if (!mongoose.Types.ObjectId.isValid(bookingId) || !mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(400).json({ success: false, message: "Invalid ID format" });
         }
@@ -42,28 +46,39 @@ router.put('/mark-read', async (req, res) => {
     }
 });
 
-router.get('/:bookingId', async (req, res) => {
+
+// ✅ NEW: Upload chat image to Cloudinary
+router.post('/upload-image', upload.single('image'), async (req, res) => {
     try {
-        const { bookingId } = req.params;
+        if (!req.file) return res.status(400).json({ success: false, message: "No image provided" });
 
-        if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-            return res.status(400).json({ success: false, message: "Invalid bookingId" });
-        }
+        const streamUpload = () => new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                { folder: 'hirenear_chat' },
+                (error, result) => {
+                    if (result) resolve(result.secure_url);
+                    else reject(error);
+                }
+            );
+            streamifier.createReadStream(req.file.buffer).pipe(stream);
+        });
 
-        const messages = await Message.find({ bookingId }).sort({ createdAt: 1 });
-        res.json({ success: true, messages });
+        const imageUrl = await streamUpload();
+        res.json({ success: true, imageUrl });
     } catch (error) {
+        console.error("Image upload error:", error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
+
 /**
  * @route   GET /api/messages/conversations/:userId
- * @desc    Get the summary list of all chats (The "Messages" Tab)
- * Separates jobs even if they share the same worker/client.
+ * ✅ MUST be above /:bookingId — otherwise Express treats "conversations" as a bookingId
  */
 router.get('/conversations/:userId', async (req, res) => {
     try {
+        console.log("🔍 userId received:", req.params.userId);
         const userId = new mongoose.Types.ObjectId(req.params.userId);
 
         const conversations = await Message.aggregate([
@@ -74,10 +89,10 @@ router.get('/conversations/:userId', async (req, res) => {
                 }
             },
 
-            // 2. Sort by newest first so the grouping grabs the most recent message
+            // 2. Sort by newest first
             { $sort: { createdAt: -1 } },
 
-            // 3. Group by bookingId (Unique chat thread per job)
+            // 3. Group by bookingId
             {
                 $group: {
                     _id: "$bookingId",
@@ -98,7 +113,7 @@ router.get('/conversations/:userId', async (req, res) => {
                 }
             },
 
-            // 4. Join with Bookings collection for Job Title
+            // 4. Join with Bookings collection
             {
                 $lookup: {
                     from: 'bookings',
@@ -109,7 +124,18 @@ router.get('/conversations/:userId', async (req, res) => {
             },
             { $unwind: "$bookingInfo" },
 
-            // 5. Identify the "Other Person" in the chat
+            // 4b. Join with JobPost to get the actual job title
+            {
+                $lookup: {
+                    from: 'job_posts', // ✅ matches ref: 'JobPost' in your Booking model
+                    localField: 'bookingInfo.jobId',
+                    foreignField: '_id',
+                    as: 'jobInfo'
+                }
+            },
+            { $unwind: { path: "$jobInfo", preserveNullAndEmptyArrays: true } },
+
+            // 5. Identify the other person
             {
                 $addFields: {
                     otherPersonId: {
@@ -122,7 +148,7 @@ router.get('/conversations/:userId', async (req, res) => {
                 }
             },
 
-            // 6. Join with Users collection for the Other Person's Name
+            // 6. Join with Users collection
             {
                 $lookup: {
                     from: 'users',
@@ -136,16 +162,16 @@ router.get('/conversations/:userId', async (req, res) => {
             // 7. Structure the final object
             {
                 $project: {
-                    _id: 1, // bookingId
+                    _id: 1,
                     lastMessage: 1,
                     unreadCount: 1,
-                    jobTitle: "$bookingInfo.title",
+                    jobTitle: "$jobInfo.title",  // ✅ from jobInfo, not bookingInfo
                     otherUserName: "$userInfo.name",
                     otherUserId: "$userInfo._id"
                 }
             },
 
-            // 8. Final sort by latest activity
+            // 8. Final sort
             { $sort: { "lastMessage.createdAt": -1 } }
         ]);
 
@@ -153,6 +179,25 @@ router.get('/conversations/:userId', async (req, res) => {
 
     } catch (error) {
         console.error("🔥 Conversation Fetch Error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * @route   GET /api/messages/:bookingId
+ * ✅ MUST be below /conversations/:userId
+ */
+router.get('/:bookingId', async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+            return res.status(400).json({ success: false, message: "Invalid bookingId" });
+        }
+
+        const messages = await Message.find({ bookingId }).sort({ createdAt: 1 });
+        res.json({ success: true, messages });
+    } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
