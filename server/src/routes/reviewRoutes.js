@@ -1,9 +1,21 @@
-const express = require ('express');
+const express = require('express');
 const router = express.Router();
-const { createReview, getWorkerReviews } = require('../controllers/reviewController');
+const reviewController = require('../controllers/reviewController');
 
-router.post('/', createReview);
+// This is your Multer setup
+const upload = require('../middleware/upload');
+router.get('/worker/:workerId', reviewController.getWorkerReviews);
 
-router.get('/worker/workerId', getWorkerReviews);
+router.get('/booking/:bookingId', reviewController.checkReviewStatus);
+
+router.post('/', upload.array('images', 5), reviewController.createReview);
+
+router.get('/:reviewId', reviewController.getSingleReview);
+
+router.patch('/:reviewId', upload.array('images', 5), reviewController.updateReview);
+
+router.get('/booking/:bookingId', reviewController.checkReviewStatus);
+
+router.delete('/:reviewId', reviewController.deleteReview);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,6 +9,8 @@ import BookingDetailsScreen from '../screens/Client/BookingDetailsScreen';
 import WorkerBookingDetailsScreen from '../screens/Worker/WorkerBookingDetailsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
+import AddReviewScreen from "../screens/Client/AddReviewScreen";
+import ViewReviewScreen from "../screens/Worker/ViewReviewScreen";
 
 // Auth screens
 import LoginScreen from '../screens/LoginScreen';
@@ -29,7 +31,7 @@ import EditBidScreen from '../screens/Worker/EditBidScreen';
 
 // Portfolio Screen
 import WorkerPortfolioScreen from '../screens/Worker/WorkerPortfolioScreen';
-//invoice
+// invoice
 import CreateInvoiceScreen from '../screens/Worker/CreateInvoiceScreen';
 import InvoiceDetailsScreen from '../screens/Client/InvoiceDetailsScreen';
 
@@ -96,11 +98,12 @@ export default function AppNavigator() {
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="SupportChat" component={SupportChatScreen} />
 
-            {/* Updated Invoice Screens */}
             <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
             <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen} />
 
             <Stack.Screen name="BidDetail" component={BidDetailScreen} />
+            <Stack.Screen name="AddReview" component={AddReviewScreen} />
+            <Stack.Screen name="ViewReview" component={ViewReviewScreen} />
         </Stack.Navigator>
     );
 }
