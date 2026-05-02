@@ -34,29 +34,24 @@ export default function WorkerActiveJobsScreen({ navigation }) {
         }, [])
     );
 
-    // --- NEW: CHAT NAVIGATION FUNCTION ---
     const handleChat = async (item) => {
         try {
-            // Get current worker data from storage to identify the sender
             const userData = JSON.parse(await AsyncStorage.getItem('user'));
-
             if (!userData?._id) {
                 Alert.alert("Error", "User session expired. Please login again.");
                 return;
             }
 
             navigation.navigate('Chat', {
-                bookingId: item._id, // This is the booking ID
+                bookingId: item._id,
                 receiverName: item.clientId?.name || 'Client',
                 receiverId: item.clientId?._id,
-                userId: userData._id, // The worker's ID
+                userId: userData._id,
             });
         } catch (error) {
             console.error("Error navigating to chat:", error);
         }
     };
-
-    if (loading) return <SafeAreaView className="flex-1 justify-center items-center bg-[#F8F9FB]"><ActivityIndicator size="large" /></SafeAreaView>;
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -66,6 +61,67 @@ export default function WorkerActiveJobsScreen({ navigation }) {
             default: return 'bg-gray-100 text-gray-700';
         }
     };
+
+    const renderItem = ({ item }) => {
+        // --- LOGIC FOR BUTTON VISIBILITY ---
+        const isCompleted = item.status === 'completed';
+        // Check both item.reviewId AND check if jobId has it (depending on your population)
+        const reviewId = item.reviewId || item.jobId?.reviewId;
+
+        return (
+            <View className="bg-white p-4 rounded-2xl mb-4 shadow-sm border border-gray-100">
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('WorkerBookingDetails', { jobId: item.jobId?._id || item.jobId })}
+                >
+                    <View className="flex-row justify-between items-center mb-2">
+                        <Text className="text-lg font-bold text-slate-900 flex-1" numberOfLines={1}>
+                            {item.jobId?.title || 'Assigned Job'}
+                        </Text>
+                        <View className={`px-3 py-1 rounded-full ${getStatusColor(item.status).split(' ')[0]}`}>
+                            <Text className={`text-[10px] font-bold uppercase ${getStatusColor(item.status).split(' ')[1]}`}>
+                                {item.status}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View className="flex-row items-center mt-2 pt-2 border-t border-gray-50">
+                        <Ionicons name="person" size={14} color="#64748b" />
+                        <Text className="text-slate-500 text-xs font-bold ml-1 flex-1">Client: {item.clientId?.name || 'Unknown'}</Text>
+
+                        <View className="flex-row items-center">
+                            <Ionicons name="cash" size={14} color="#059669" />
+                            <Text className="text-emerald-600 text-xs font-bold ml-1">LKR {item.price || item.jobId?.budget}</Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+
+                {/* --- ACTION BUTTONS --- */}
+                <View className="mt-4 gap-2">
+                    {/* Chat Button */}
+                    <TouchableOpacity
+                        onPress={() => handleChat(item)}
+                        className="flex-row items-center justify-center bg-slate-900 py-3 rounded-xl"
+                    >
+                        <Ionicons name="chatbubble-ellipses-outline" size={18} color="white" />
+                        <Text className="text-white font-bold ml-2">Message Client</Text>
+                    </TouchableOpacity>
+
+                    {/* --- VIEW REVIEW BUTTON --- */}
+                    {isCompleted && reviewId && (
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('ViewReview', { reviewId: reviewId })}
+                            className="flex-row items-center justify-center bg-emerald-50 border border-emerald-100 py-3 rounded-xl"
+                        >
+                            <Ionicons name="star" size={18} color="#059669" />
+                            <Text className="text-emerald-700 font-bold ml-2">View Review</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+        );
+    };
+
+    if (loading) return <SafeAreaView className="flex-1 justify-center items-center bg-[#F8F9FB]"><ActivityIndicator size="large" /></SafeAreaView>;
 
     return (
         <SafeAreaView className="flex-1 bg-[#F8F9FB]">
@@ -84,43 +140,7 @@ export default function WorkerActiveJobsScreen({ navigation }) {
                         data={bookings}
                         keyExtractor={(item) => item._id}
                         showsVerticalScrollIndicator={false}
-                        renderItem={({ item }) => (
-                            <View className="bg-white p-4 rounded-2xl mb-4 shadow-sm border border-gray-100">
-                                <TouchableOpacity
-                                    onPress={() => navigation.navigate('WorkerBookingDetails', { jobId: item.jobId?._id || item.jobId })}
-                                >
-                                    <View className="flex-row justify-between items-center mb-2">
-                                        <Text className="text-lg font-bold text-slate-900 flex-1" numberOfLines={1}>
-                                            {item.jobId?.title || 'Assigned Job'}
-                                        </Text>
-                                        <View className={`px-3 py-1 rounded-full ${getStatusColor(item.status).split(' ')[0]}`}>
-                                            <Text className={`text-[10px] font-bold uppercase ${getStatusColor(item.status).split(' ')[1]}`}>
-                                                {item.status}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    <View className="flex-row items-center mt-2 pt-2 border-t border-gray-50">
-                                        <Ionicons name="person" size={14} color="#64748b" />
-                                        <Text className="text-slate-500 text-xs font-bold ml-1 flex-1">Client: {item.clientId?.name || 'Unknown'}</Text>
-
-                                        <View className="flex-row items-center">
-                                            <Ionicons name="cash" size={14} color="#059669" />
-                                            <Text className="text-emerald-600 text-xs font-bold ml-1">LKR {item.price || item.jobId?.budget}</Text>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-
-                                {/* --- CHAT BUTTON --- */}
-                                <TouchableOpacity
-                                    onPress={() => handleChat(item)}
-                                    className="mt-4 flex-row items-center justify-center bg-slate-900 py-3 rounded-xl"
-                                >
-                                    <Ionicons name="chatbubble-ellipses-outline" size={18} color="white" />
-                                    <Text className="text-white font-bold ml-2">Message Client</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
+                        renderItem={renderItem}
                     />
                 )}
             </View>
