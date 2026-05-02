@@ -8,8 +8,8 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect } from '@react-navigation/native'; // NEW: For refreshing badge
-import { io } from 'socket.io-client'; // NEW: For real-time updates
+import { useFocusEffect } from '@react-navigation/native';
+import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../../../config';
 
 const CATEGORIES = ['All', 'Plumbing', 'Electrical', 'Cleaning', 'Repairs', 'Carpentry', 'Painting', 'Other'];
@@ -67,7 +67,7 @@ export default function WorkerDashboardScreen({ navigation }) {
     const [editProfileImage, setEditProfileImage] = useState('');
     const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
-    // NEW: Notification State
+    // Notification State
     const [unreadCount, setUnreadCount] = useState(0);
 
     const showToast = (message, type = 'success') => {
@@ -75,7 +75,7 @@ export default function WorkerDashboardScreen({ navigation }) {
         setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
     };
 
-    // NEW: Fetch unread count
+    // Fetch unread support messages count
     const fetchUnreadCount = async () => {
         try {
             const token = await AsyncStorage.getItem('token');
@@ -100,7 +100,7 @@ export default function WorkerDashboardScreen({ navigation }) {
         }, [currentUser])
     );
 
-    // NEW: Socket listener
+    // Socket listener for real-time notifications
     useEffect(() => {
         let socket = null;
         const userId = currentUser?._id || currentUser?.id;
@@ -204,56 +204,104 @@ export default function WorkerDashboardScreen({ navigation }) {
     };
 
     const handleChangePassword = async () => {
-        // (Function unchanged) ...
-        if (!oldPassword || !newPassword) { showToast('Please fill in both fields', 'error'); return; }
+        if (!oldPassword || !newPassword) {
+            showToast('Please fill in both fields', 'error');
+            return;
+        }
+
         setIsSubmittingPassword(true);
         try {
             const token = await AsyncStorage.getItem('token');
             const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ oldPassword, newPassword }),
             });
+
             const data = await response.json();
-            if (response.ok) { showToast('Password updated successfully!', 'success'); setIsChangingPassword(false); setOldPassword(''); setNewPassword(''); }
-            else { showToast(data.msg || 'Failed to update password', 'error'); }
-        } catch (error) { showToast('Network error', 'error'); } finally { setIsSubmittingPassword(false); }
+
+            if (response.ok) {
+                showToast('Password updated successfully!', 'success');
+                setIsChangingPassword(false);
+                setOldPassword('');
+                setNewPassword('');
+            } else {
+                showToast(data.msg || 'Failed to update password', 'error');
+            }
+        } catch (error) {
+            showToast('Network error', 'error');
+        } finally {
+            setIsSubmittingPassword(false);
+        }
     };
 
     const pickProfileImage = async () => {
-        // (Function unchanged) ...
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') { showToast('Camera roll permissions required.', 'error'); return; }
-        let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5 });
-        if (!result.canceled) { setEditProfileImage(result.assets[0].uri); }
+        if (status !== 'granted') {
+            showToast('Camera roll permissions required.', 'error');
+            return;
+        }
+
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            setEditProfileImage(result.assets[0].uri);
+        }
     };
 
     const handleUpdateProfile = async () => {
-        // (Function unchanged) ...
-        if (!editName.trim()) { showToast("Name cannot be empty", "error"); return; }
+        if (!editName.trim()) {
+            showToast("Name cannot be empty", "error");
+            return;
+        }
+
         setIsSubmittingProfile(true);
         try {
             const token = await AsyncStorage.getItem('token');
             const formData = new FormData();
             formData.append('name', editName);
+
             if (editProfileImage && !editProfileImage.startsWith('http')) {
                 const filename = editProfileImage.split('/').pop();
                 const match = /\.(\w+)$/.exec(filename);
                 const type = match ? `image/${match[1]}` : `image/jpeg`;
                 formData.append('profileImage', { uri: editProfileImage, name: filename, type });
             }
-            const response = await fetch(`${API_BASE_URL}/auth/profile`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
+
+            const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData,
+            });
+
             const data = await response.json();
+
             if (response.ok) {
                 const updatedUser = { ...currentUser, name: data.user.name, profileImage: data.user.profileImage };
                 setCurrentUser(updatedUser);
                 await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-                showToast('Profile updated successfully!', 'success'); setIsEditingProfile(false);
-            } else { showToast(data.msg || 'Failed to update profile', 'error'); }
-        } catch (error) { showToast('Network error during upload', 'error'); } finally { setIsSubmittingProfile(false); }
+
+                showToast('Profile updated successfully!', 'success');
+                setIsEditingProfile(false);
+            } else {
+                showToast(data.msg || 'Failed to update profile', 'error');
+            }
+        } catch (error) {
+            showToast('Network error during upload', 'error');
+        } finally {
+            setIsSubmittingProfile(false);
+        }
     };
 
     const renderJob = ({ item }) => {
-        // (Function unchanged) ...
         const cat = getCatStyle(item.category);
         let distKm = null;
         if (workerLocation && item.location?.coordinates?.length === 2) {
@@ -262,14 +310,18 @@ export default function WorkerDashboardScreen({ navigation }) {
             distKm = isNaN(d) ? null : Math.round(d * 10) / 10;
         }
         const isNearby = distKm !== null && distKm < 5;
-        const distLabel = distKm === null ? null : distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(1)} km`;
+
+        const distLabel = distKm === null ? null
+            : distKm < 1 ? `${Math.round(distKm * 1000)} m`
+                : `${distKm.toFixed(1)} km`;
 
         return (
             <View style={{
                 backgroundColor: 'white', borderRadius: 28, padding: 20, marginBottom: 16,
                 shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-                borderWidth: isNearby ? 1.5 : 1, borderColor: isNearby ? '#bbf7d0' : '#f1f5f9',
+                borderWidth: isNearby ? 1.5 : 1,
+                borderColor: isNearby ? '#bbf7d0' : '#f1f5f9',
             }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -289,22 +341,28 @@ export default function WorkerDashboardScreen({ navigation }) {
                         </View>
                     )}
                 </View>
+
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ecfdf5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
                         <Ionicons name="cash-outline" size={14} color="#059669" />
                         <Text style={{ color: '#047857', fontWeight: '700', fontSize: 13, marginLeft: 5 }}>{formatBudget(item.budget)}</Text>
                     </View>
                 </View>
+
                 {!!item.description && (
                     <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 19, marginBottom: 14 }} numberOfLines={2}>{item.description}</Text>
                 )}
+
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     {isNearby ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ecfdf5', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }}>
                             <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>🔥 Nearby – High Priority</Text>
                         </View>
                     ) : <View />}
-                    <TouchableOpacity style={{ backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 }} onPress={() => navigation.navigate('SubmitBid', { job: item })}>
+                    <TouchableOpacity
+                        style={{ backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 }}
+                        onPress={() => navigation.navigate('SubmitBid', { job: item })}
+                    >
                         <Text style={{ color: 'white', fontWeight: '800', fontSize: 13 }}>Place Bid →</Text>
                     </TouchableOpacity>
                 </View>
@@ -329,7 +387,6 @@ export default function WorkerDashboardScreen({ navigation }) {
                 </View>
             )}
 
-            {/* NEW: Updated Header with Bell Icon */}
             <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View>
                     <Text style={{ color: '#94a3b8', fontSize: 13, fontWeight: '600' }}>Welcome back</Text>
@@ -338,13 +395,13 @@ export default function WorkerDashboardScreen({ navigation }) {
                     </Text>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {/* NEW: Chat Icon with Notification Badge matching Client Dashboard */}
                     <TouchableOpacity
                         style={{
-                            backgroundColor: 'white', width: 45, height: 45, borderRadius: 50,
-                            alignItems: 'center', justifyContent: 'center',
-                            borderWidth: 1, borderColor: '#e2e8f0', shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 2,
+                            backgroundColor: 'white', padding: 10, borderRadius: 50, marginRight: 12,
+                            shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, elevation: 2,
+                            borderWidth: 1, borderColor: '#f1f5f9'
                         }}
                         onPress={() => navigation.navigate('SupportChat')}
                     >
@@ -352,7 +409,7 @@ export default function WorkerDashboardScreen({ navigation }) {
                         {unreadCount > 0 && (
                             <View style={{
                                 position: 'absolute', top: -4, right: -4, backgroundColor: '#ef4444',
-                                width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+                                width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
                                 borderWidth: 2, borderColor: 'white'
                             }}>
                                 <Text style={{ color: 'white', fontSize: 10, fontWeight: '900' }}>
@@ -362,6 +419,7 @@ export default function WorkerDashboardScreen({ navigation }) {
                         )}
                     </TouchableOpacity>
 
+                    {/* Profile Picture */}
                     <TouchableOpacity
                         style={{
                             backgroundColor: '#e2e8f0', width: 45, height: 45, borderRadius: 50,
@@ -383,7 +441,6 @@ export default function WorkerDashboardScreen({ navigation }) {
                 </View>
             </View>
 
-            {/* Rest of the UI remains identical */}
             <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 16,
@@ -483,11 +540,47 @@ export default function WorkerDashboardScreen({ navigation }) {
                         <View style={{ width: 40, height: 5, backgroundColor: '#e2e8f0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 }} />
 
                         {isEditingProfile ? (
-                            // ... (Edit Profile code unchanged) ...
-                            <Text>Edit Profile Content Placeholder</Text>
+                            <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+                                    <TouchableOpacity onPress={() => setIsEditingProfile(false)} style={{ marginRight: 16 }}>
+                                        <Ionicons name="arrow-back" size={24} color="#0f172a" />
+                                    </TouchableOpacity>
+                                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Edit Profile</Text>
+                                </View>
+
+                                <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                                    <TouchableOpacity onPress={pickProfileImage} style={{ position: 'relative' }}>
+                                        <Image
+                                            source={{ uri: editProfileImage || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback' }}
+                                            style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#f1f5f9' }}
+                                        />
+                                        <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: '#0f172a', padding: 8, borderRadius: 20, borderWidth: 2, borderColor: 'white' }}>
+                                            <Ionicons name="camera" size={16} color="white" />
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <Text style={{ fontWeight: '700', color: '#475569', marginBottom: 8, marginLeft: 4 }}>Full Name</Text>
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="Your Name" value={editName} onChangeText={setEditName} />
+
+                                <TouchableOpacity style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 18, alignItems: 'center', opacity: isSubmittingProfile ? 0.7 : 1 }} onPress={handleUpdateProfile} disabled={isSubmittingProfile}>
+                                    {isSubmittingProfile ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Save Changes</Text>}
+                                </TouchableOpacity>
+                            </>
                         ) : isChangingPassword ? (
-                            // ... (Change Password code unchanged) ...
-                            <Text>Change Password Placeholder</Text>
+                            <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+                                    <TouchableOpacity onPress={() => setIsChangingPassword(false)} style={{ marginRight: 16 }}>
+                                        <Ionicons name="arrow-back" size={24} color="#0f172a" />
+                                    </TouchableOpacity>
+                                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Change Password</Text>
+                                </View>
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="Current Password" secureTextEntry value={oldPassword} onChangeText={setOldPassword} />
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="New Password" secureTextEntry value={newPassword} onChangeText={setNewPassword} />
+                                <TouchableOpacity style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 18, alignItems: 'center', opacity: isSubmittingPassword ? 0.7 : 1 }} onPress={handleChangePassword} disabled={isSubmittingPassword}>
+                                    {isSubmittingPassword ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Update Password</Text>}
+                                </TouchableOpacity>
+                            </>
                         ) : (
                             <>
                                 <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 24 }}>Account Settings</Text>
@@ -504,7 +597,6 @@ export default function WorkerDashboardScreen({ navigation }) {
                                     </View>
                                     <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1e293b' }}>Contact Admins (Support)</Text>
 
-                                    {/* NEW: Modal Unread Badge */}
                                     {unreadCount > 0 && (
                                         <View style={{ backgroundColor: '#ef4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginRight: 8 }}>
                                             <Text style={{ color: 'white', fontSize: 12, fontWeight: '800' }}>{unreadCount}</Text>
@@ -521,7 +613,28 @@ export default function WorkerDashboardScreen({ navigation }) {
                                     <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
                                 </TouchableOpacity>
 
-                                {/* ... (Rest of Modal buttons unchanged) ... */}
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }} onPress={() => setIsEditingProfile(true)}>
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="person-outline" size={20} color="#0f172a" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Edit Profile</Text>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }} onPress={() => setIsChangingPassword(true)}>
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="lock-closed-outline" size={20} color="#0f172a" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 }}>Change Password</Text>
+                                    <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16 }} onPress={handleLogout}>
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', flex: 1 }}>Sign Out</Text>
+                                </TouchableOpacity>
                             </>
                         )}
                     </TouchableOpacity>
