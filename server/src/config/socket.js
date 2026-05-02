@@ -1,4 +1,6 @@
 const Message = require('../models/Message');
+const mongoose = require('mongoose');
+
 
 const socketHandler = (io) => {
     io.on('connection', (socket) => {
@@ -36,15 +38,15 @@ const socketHandler = (io) => {
 
         socket.on('mark_as_read', async ({ bookingId, userId }) => {
             try {
-                // Update all messages in this booking where the current user is the receiver
                 await Message.updateMany(
-                    { bookingId, receiverId: userId, isRead: false },
+                    {
+                        bookingId: new mongoose.Types.ObjectId(bookingId),  // ✅ cast
+                        receiverId: new mongoose.Types.ObjectId(userId),    // ✅ cast
+                        isRead: false
+                    },
                     { $set: { isRead: true } }
                 );
-
-                // Notify the room so the sender sees a "read" receipt (optional)
                 io.to(bookingId).emit('messages_marked_read', { bookingId, userId });
-                console.log(`📖 Messages marked read for user ${userId} in ${bookingId}`);
             } catch (error) {
                 console.error("Read status error:", error);
             }

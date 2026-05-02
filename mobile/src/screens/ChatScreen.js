@@ -27,8 +27,11 @@ export default function ChatScreen({ route, navigation }) {
         socket.current = io(SOCKET_URL);
         fetchChatHistory();
         socket.current.emit("join_chat", bookingId);
+        socket.current.emit("mark_as_read", { bookingId, userId }); // ✅ mark read on open
+
         socket.current.on("receive_message", (newMessage) => {
             setMessages((prev) => [...prev, newMessage]);
+            socket.current.emit("mark_as_read", { bookingId, userId }); // ✅ mark read on new message
         });
         return () => {
             socket.current.disconnect();
@@ -122,7 +125,7 @@ export default function ChatScreen({ route, navigation }) {
     };
 
     const renderMessage = ({ item }) => {
-        const isMine = item.senderId === userId;
+        const isMine = item.senderId?.toString() === userId?.toString();
 
         return (
             <View className={`mb-4 flex-row ${isMine ? 'justify-end' : 'justify-start'}`}>

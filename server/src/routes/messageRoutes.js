@@ -7,21 +7,6 @@ const Message = require('../models/Message');
  * @route   GET /api/messages/:bookingId
  * @desc    Get chat history for a specific job/booking
  */
-router.get('/:bookingId', async (req, res) => {
-    try {
-        const { bookingId } = req.params;
-
-        if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-            return res.status(400).json({ success: false, message: "Invalid bookingId" });
-        }
-
-        const messages = await Message.find({ bookingId }).sort({ createdAt: 1 });
-        res.json({ success: true, messages });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
 /**
  * @route   PUT /api/messages/mark-read
  * @desc    Mark all messages in a booking as read for the current user
@@ -53,6 +38,21 @@ router.put('/mark-read', async (req, res) => {
         res.json({ success: true, count: result.modifiedCount });
     } catch (error) {
         console.error("🔥 Backend Error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.get('/:bookingId', async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+            return res.status(400).json({ success: false, message: "Invalid bookingId" });
+        }
+
+        const messages = await Message.find({ bookingId }).sort({ createdAt: 1 });
+        res.json({ success: true, messages });
+    } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
