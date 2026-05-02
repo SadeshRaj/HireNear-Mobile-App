@@ -33,6 +33,24 @@ const socketHandler = (io) => {
             }
         });
 
+
+        socket.on('mark_as_read', async ({ bookingId, userId }) => {
+            try {
+                // Update all messages in this booking where the current user is the receiver
+                await Message.updateMany(
+                    { bookingId, receiverId: userId, isRead: false },
+                    { $set: { isRead: true } }
+                );
+
+                // Notify the room so the sender sees a "read" receipt (optional)
+                io.to(bookingId).emit('messages_marked_read', { bookingId, userId });
+                console.log(`📖 Messages marked read for user ${userId} in ${bookingId}`);
+            } catch (error) {
+                console.error("Read status error:", error);
+            }
+        });
+
+
         socket.on('disconnect', () => {
             console.log('👻 User disconnected');
         });
