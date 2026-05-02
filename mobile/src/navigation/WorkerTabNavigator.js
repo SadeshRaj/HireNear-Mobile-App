@@ -4,11 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import WorkerDashboardScreen from '../screens/WorkerDashboardScreen';
-import MyBidsScreen from '../screens/MyBidsScreen';
+import WorkerDashboardScreen from '../screens/Worker/WorkerDashboardScreen';
+import MyBidsScreen from '../screens/Worker/MyBidsScreen';
 // NEW SCREENS
-import WorkerActiveJobsScreen from '../screens/WorkerActiveJobsScreen';
-import EarningsScreen from '../screens/EarningsScreen';
+import WorkerActiveJobsScreen from '../screens/Worker/WorkerActiveJobsScreen';
+import EarningsScreen from '../screens/Worker/EarningsScreen';
 
 const Tab = createBottomTabNavigator();
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;

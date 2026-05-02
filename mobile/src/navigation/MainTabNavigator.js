@@ -3,8 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import your screens (we use ../screens because this file is inside the navigation folder)
-import DashboardScreen from '../screens/DashboardScreen';
-import MyJobPostsScreen from '../screens/MyJobPostsScreen';
+import DashboardScreen from '../screens/Client/DashboardScreen';
+import MyJobPostsScreen from '../screens/Client/MyJobPostsScreen';
 
 const Tab = createBottomTabNavigator();
 

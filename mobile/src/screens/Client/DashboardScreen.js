@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Dimensions, FlatList, Alert, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
-import { API_BASE_URL } from '../../config';
+import { useFocusEffect } from '@react-navigation/native'; // Added for refreshing badge
+import { io } from 'socket.io-client'; // Added for real-time notifications
+import { API_BASE_URL } from '../../../config';
 
 const { width } = Dimensions.get('window');
 
@@ -18,37 +20,78 @@ export default function DashboardScreen({ navigation, route }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const flatListRef = useRef(null);
 
-    // Keep track of the user locally to instantly update UI
     const [currentUser, setCurrentUser] = useState(route?.params?.user || {});
     const firstName = currentUser?.name ? currentUser.name.split(' ')[0] : 'Guest';
 
-    // Modal & Profile States
+    // UI States
     const [isProfileModalVisible, setProfileModalVisible] = useState(false);
-
-    // Change Password States
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
-
-    // Edit Profile States
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [editName, setEditName] = useState(currentUser?.name || '');
     const [editProfileImage, setEditProfileImage] = useState(currentUser?.profileImage || '');
     const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
+    // NEW: Notification State
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // NEW: Fetch unread count whenever the screen comes into focus
+    const fetchUnreadCount = async () => {
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const userId = currentUser?._id || currentUser?.id;
+            if (!token || !userId) return;
+
+            const res = await fetch(`${API_BASE_URL}/support/unread/${userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.unreadCount !== undefined) {
+                setUnreadCount(data.unreadCount);
+            }
+        } catch (error) {
+            console.error("Failed to fetch unread count", error);
+        }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchUnreadCount();
+        }, [currentUser])
+    );
+
+    // NEW: Global Socket Listener for Real-Time Badge Updates
+    useEffect(() => {
+        let socket = null;
+        const userId = currentUser?._id || currentUser?.id;
+
+        if (userId) {
+            const backendUrl = API_BASE_URL.replace('/api', '');
+            socket = io(backendUrl);
+            socket.emit('join', { userId: userId });
+
+            socket.on('receiveMessage', (msg) => {
+                // If a message arrives from the admin, increase the badge!
+                if (msg.isAdmin) {
+                    setUnreadCount(prev => prev + 1);
+                }
+            });
+        }
+
+        return () => {
+            if (socket) socket.disconnect();
+        };
+    }, [currentUser]);
+
     useEffect(() => {
         const interval = setInterval(() => {
             let nextIndex = activeIndex + 1;
             if (nextIndex >= CAROUSEL_IMAGES.length) nextIndex = 0;
-
-            flatListRef.current?.scrollToIndex({
-                index: nextIndex,
-                animated: true,
-            });
+            flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
             setActiveIndex(nextIndex);
         }, 3500);
-
         return () => clearInterval(interval);
     }, [activeIndex]);
 
@@ -69,21 +112,15 @@ export default function DashboardScreen({ navigation, route }) {
             Alert.alert('Error', 'Please fill in both fields');
             return;
         }
-
         setIsSubmittingPassword(true);
         try {
             const token = await AsyncStorage.getItem('token');
             const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ oldPassword, newPassword }),
             });
-
             const data = await response.json();
-
             if (response.ok) {
                 Alert.alert('Success', 'Password updated successfully!');
                 setIsChangingPassword(false);
@@ -105,14 +142,9 @@ export default function DashboardScreen({ navigation, route }) {
             Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to upload an image.');
             return;
         }
-
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
+            mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5,
         });
-
         if (!result.canceled) {
             setEditProfileImage(result.assets[0].uri);
         }
@@ -123,36 +155,25 @@ export default function DashboardScreen({ navigation, route }) {
             Alert.alert("Error", "Name cannot be empty");
             return;
         }
-
         setIsSubmittingProfile(true);
         try {
             const token = await AsyncStorage.getItem('token');
             const formData = new FormData();
             formData.append('name', editName);
-
-            // Only append the image if it's a new local URI (not the existing Cloudinary URL)
             if (editProfileImage && !editProfileImage.startsWith('http')) {
                 const filename = editProfileImage.split('/').pop();
                 const match = /\.(\w+)$/.exec(filename);
                 const type = match ? `image/${match[1]}` : `image/jpeg`;
                 formData.append('profileImage', { uri: editProfileImage, name: filename, type });
             }
-
             const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData,
+                method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }, body: formData,
             });
-
             const data = await response.json();
-
             if (response.ok) {
                 const updatedUser = { ...currentUser, name: data.user.name, profileImage: data.user.profileImage };
                 setCurrentUser(updatedUser);
                 await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-
                 Alert.alert('Success', 'Profile updated successfully!');
                 setIsEditingProfile(false);
             } else {
@@ -182,10 +203,19 @@ export default function DashboardScreen({ navigation, route }) {
                     </View>
 
                     <View className="flex-row items-center gap-3">
-                        <View className="flex-row items-center bg-white py-2 px-3 rounded-full shadow-sm border border-gray-100">
-                            <Feather name="sun" size={18} color="#d97706" />
-                            <Text className="text-slate-700 font-bold ml-2">29°</Text>
-                        </View>
+                        {/* NEW: Notification Bell Icon */}
+                        <TouchableOpacity
+                            className="relative bg-white p-2 rounded-full shadow-sm border border-gray-100"
+                            onPress={() => navigation.navigate('SupportChat')}
+                        >
+                            <Ionicons name="chatbox-ellipses-outline" size={20} color="#0f172a" />
+                            {unreadCount > 0 && (
+                                <View className="absolute -top-1 -right-1 bg-red-500 w-5 h-5 rounded-full items-center justify-center border-[1.5px] border-white">
+                                    <Text className="text-white text-[10px] font-extrabold">{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                             className="bg-white p-1 rounded-full shadow-sm border border-gray-100"
                             onPress={() => {
@@ -326,6 +356,7 @@ export default function DashboardScreen({ navigation, route }) {
 
                         {isEditingProfile ? (
                             <>
+                                {/* ... Edit Profile Modal Content (Unchanged) ... */}
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
                                     <TouchableOpacity onPress={() => setIsEditingProfile(false)} style={{ marginRight: 16 }}>
                                         <Ionicons name="arrow-back" size={24} color="#0f172a" />
@@ -367,6 +398,7 @@ export default function DashboardScreen({ navigation, route }) {
                             </>
                         ) : isChangingPassword ? (
                             <>
+                                {/* ... Change Password Modal Content (Unchanged) ... */}
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
                                     <TouchableOpacity onPress={() => setIsChangingPassword(false)} style={{ marginRight: 16 }}>
                                         <Ionicons name="arrow-back" size={24} color="#0f172a" />
@@ -404,6 +436,27 @@ export default function DashboardScreen({ navigation, route }) {
                         ) : (
                             <>
                                 <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 24 }}>Account Settings</Text>
+
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', padding: 16, borderRadius: 16, marginBottom: 12 }}
+                                    onPress={() => {
+                                        setProfileModalVisible(false);
+                                        navigation.navigate('SupportChat');
+                                    }}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="chatbubbles" size={20} color="#3b82f6" />
+                                    </View>
+                                    <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1e293b' }}>Contact Admins (Support)</Text>
+
+                                    {/* Modal Unread Badge */}
+                                    {unreadCount > 0 && (
+                                        <View className="bg-red-500 px-2 py-0.5 rounded-full mr-2">
+                                            <Text className="text-white text-xs font-bold">{unreadCount}</Text>
+                                        </View>
+                                    )}
+                                    <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                                </TouchableOpacity>
 
                                 <TouchableOpacity
                                     style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}

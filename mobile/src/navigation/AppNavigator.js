@@ -3,15 +3,17 @@ import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import JobBidsScreen from '../screens/JobBidsScreen';
-import BidDetailScreen from '../screens/BidDetailScreen';
-import BookingDetailsScreen from '../screens/BookingDetailsScreen';
-import WorkerBookingDetailsScreen from '../screens/WorkerBookingDetailsScreen';
+import JobBidsScreen from '../screens/Client/JobBidsScreen';
+import BidDetailScreen from '../screens/Client/BidDetailScreen';
+import BookingDetailsScreen from '../screens/Client/BookingDetailsScreen';
+import WorkerBookingDetailsScreen from '../screens/Worker/WorkerBookingDetailsScreen';
+import ChatScreen from '../screens/ChatScreen';
+import SupportChatScreen from '../screens/SupportChatScreen';
 
 // Auth screens
 import LoginScreen from '../screens/LoginScreen';
-import ClientRegisterScreen from '../screens/ClientRegisterScreen';
-import WorkerRegisterScreen from '../screens/WorkerRegisterScreen';
+import ClientRegisterScreen from '../screens/Client/ClientRegisterScreen';
+import WorkerRegisterScreen from '../screens/Worker/WorkerRegisterScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 
 // Navigators
@@ -19,17 +21,17 @@ import MainTabNavigator from './MainTabNavigator';
 import WorkerTabNavigator from './WorkerTabNavigator';
 
 // Job & Bidding Screens
-import CreateJobScreen from '../screens/CreateJobScreen';
-import SubmitBidScreen from '../screens/SubmitBidScreen';
-import BidListScreen from '../screens/BidListScreen';
-import MyBidsScreen from '../screens/MyBidsScreen';
-import EditBidScreen from '../screens/EditBidScreen';
+import CreateJobScreen from '../screens/Client/CreateJobScreen';
+import SubmitBidScreen from '../screens/Worker/SubmitBidScreen';
+import BidListScreen from '../screens/Client/BidListScreen';
+import MyBidsScreen from '../screens/Worker/MyBidsScreen';
+import EditBidScreen from '../screens/Worker/EditBidScreen';
 
 // Portfolio Screen
-import WorkerPortfolioScreen from '../screens/WorkerPortfolioScreen';
+import WorkerPortfolioScreen from '../screens/Worker/WorkerPortfolioScreen';
 //invoice
-import CreateInvoiceScreen from '../screens/CreateInvoiceScreen';
-import InvoiceDetailsScreen from '../screens/InvoiceDetailsScreen';
+import CreateInvoiceScreen from '../screens/Worker/CreateInvoiceScreen';
+import InvoiceDetailsScreen from '../screens/Client/InvoiceDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -91,6 +93,8 @@ export default function AppNavigator() {
             <Stack.Screen name="WorkerBookingDetails" component={WorkerBookingDetailsScreen} />
 
             <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="SupportChat" component={SupportChatScreen} />
 
             {/* Updated Invoice Screens */}
             <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />

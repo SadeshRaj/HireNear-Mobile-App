@@ -6,7 +6,7 @@ const Invoice = require('../models/Invoice');
 
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select('-password');
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
         res.json(users);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -31,7 +31,7 @@ exports.updateUserStatus = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
-        
+
         user.accountStatus = req.body.accountStatus;
         await user.save();
         res.json({ msg: 'User account status updated', user });
@@ -60,7 +60,7 @@ exports.deletePortfolio = async (req, res) => {
 
 exports.getAllJobs = async (req, res) => {
     try {
-        const jobs = await JobPost.find().populate('clientId', 'name email');
+        const jobs = await JobPost.find().populate('clientId', 'name email').sort({ createdAt: -1 });
         res.json(jobs);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -69,7 +69,7 @@ exports.getAllJobs = async (req, res) => {
 
 exports.getAllBids = async (req, res) => {
     try {
-        const bids = await Bid.find().populate('workerId', 'name email').populate('jobId', 'title description');
+        const bids = await Bid.find().populate('workerId', 'name email').populate('jobId', 'title description').sort({ createdAt: -1 });
         res.json(bids);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -78,7 +78,7 @@ exports.getAllBids = async (req, res) => {
 
 exports.getAllPortfolios = async (req, res) => {
     try {
-        const portfolios = await PortfolioItem.find().populate('workerId', 'name email');
+        const portfolios = await PortfolioItem.find().populate('workerId', 'name email').sort({ createdAt: -1 });
         res.json(portfolios);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -87,9 +87,53 @@ exports.getAllPortfolios = async (req, res) => {
 
 exports.getAllInvoices = async (req, res) => {
     try {
-        const invoices = await Invoice.find().populate('workerId', 'name email').populate('clientId', 'name email');
+        const invoices = await Invoice.find().populate('workerId', 'name email').populate('clientId', 'name email').sort({ createdAt: -1 });
         res.json(invoices);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ==========================================
+// DASHBOARD OVERVIEW AGGREGATION (UPDATED)
+// ==========================================
+exports.getDashboardOverview = async (req, res) => {
+    try {
+        // 1. TOP LEVEL METRICS
+        const totalUsers = await User.countDocuments({ role: { $ne: 'Admin' } });
+        const activeJobs = await JobPost.countDocuments({ status: 'Open' }); // Change 'Open' if your active status is different
+        const totalBids = await Bid.countDocuments();
+
+        // 2. TOP CATEGORIES (Groups jobs by category and counts them)
+        const categoryData = await JobPost.aggregate([
+            { $group: { _id: '$category', jobs: { $sum: 1 } } },
+            { $project: { name: '$_id', jobs: 1, _id: 0 } },
+            { $sort: { jobs: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // 3. RECENT ACTIVITY
+        const recentJobs = await JobPost.find()
+            .sort({ createdAt: -1 })
+            .limit(4)
+            .populate('clientId', 'name');
+
+        const recentActivity = recentJobs.map(job => ({
+            id: job._id,
+            action: 'New job posted',
+            user: job.clientId ? job.clientId.name : 'Unknown Client',
+            time: new Date(job.createdAt).toLocaleDateString(),
+            type: 'job'
+        }));
+
+        res.json({
+            metrics: { totalUsers, activeJobs, totalBids },
+            categoryData,
+            recentActivity
+        });
+
+    } catch (err) {
+        console.error("Overview Stats Error:", err);
+        res.status(500).json({ error: 'Failed to fetch real database stats' });
     }
 };

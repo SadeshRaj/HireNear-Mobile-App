@@ -8,7 +8,9 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import { API_BASE_URL } from '../../config';
+import { useFocusEffect } from '@react-navigation/native';
+import { io } from 'socket.io-client';
+import { API_BASE_URL } from '../../../config';
 
 const CATEGORIES = ['All', 'Plumbing', 'Electrical', 'Cleaning', 'Repairs', 'Carpentry', 'Painting', 'Other'];
 
@@ -65,10 +67,60 @@ export default function WorkerDashboardScreen({ navigation }) {
     const [editProfileImage, setEditProfileImage] = useState('');
     const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
+    // Notification State
+    const [unreadCount, setUnreadCount] = useState(0);
+
     const showToast = (message, type = 'success') => {
         setToast({ visible: true, message, type });
         setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
     };
+
+    // Fetch unread support messages count
+    const fetchUnreadCount = async () => {
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const userId = currentUser?._id || currentUser?.id;
+            if (!token || !userId) return;
+
+            const res = await fetch(`${API_BASE_URL}/support/unread/${userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.unreadCount !== undefined) {
+                setUnreadCount(data.unreadCount);
+            }
+        } catch (error) {
+            console.error("Failed to fetch unread count", error);
+        }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchUnreadCount();
+        }, [currentUser])
+    );
+
+    // Socket listener for real-time notifications
+    useEffect(() => {
+        let socket = null;
+        const userId = currentUser?._id || currentUser?.id;
+
+        if (userId) {
+            const backendUrl = API_BASE_URL.replace('/api', '');
+            socket = io(backendUrl);
+            socket.emit('join', { userId: userId });
+
+            socket.on('receiveMessage', (msg) => {
+                if (msg.isAdmin) {
+                    setUnreadCount(prev => prev + 1);
+                }
+            });
+        }
+
+        return () => {
+            if (socket) socket.disconnect();
+        };
+    }, [currentUser]);
 
     useEffect(() => {
         AsyncStorage.getItem('user').then(raw => {
@@ -110,7 +162,6 @@ export default function WorkerDashboardScreen({ navigation }) {
             } else {
                 url = `${API_BASE_URL}/jobs`;
                 if (queryString) url += `?${queryString}`;
-
             }
 
             const response = await fetch(url, {
@@ -343,24 +394,51 @@ export default function WorkerDashboardScreen({ navigation }) {
                         Hi, {workerName} 👋
                     </Text>
                 </View>
-                <TouchableOpacity
-                    style={{
-                        backgroundColor: '#e2e8f0', width: 45, height: 45, borderRadius: 50,
-                        alignItems: 'center', justifyContent: 'center',
-                        borderWidth: 2, borderColor: 'white', shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, elevation: 2
-                    }}
-                    onPress={() => {
-                        setEditName(currentUser?.name);
-                        setEditProfileImage(currentUser?.profileImage);
-                        setProfileModalVisible(true);
-                    }}
-                >
-                    <Image
-                        source={{ uri: currentUser?.profileImage || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback' }}
-                        style={{ width: '100%', height: '100%', borderRadius: 50 }}
-                    />
-                </TouchableOpacity>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {/* NEW: Chat Icon with Notification Badge matching Client Dashboard */}
+                    <TouchableOpacity
+                        style={{
+                            backgroundColor: 'white', padding: 10, borderRadius: 50, marginRight: 12,
+                            shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, elevation: 2,
+                            borderWidth: 1, borderColor: '#f1f5f9'
+                        }}
+                        onPress={() => navigation.navigate('SupportChat')}
+                    >
+                        <Ionicons name="chatbubbles-outline" size={22} color="#0f172a" />
+                        {unreadCount > 0 && (
+                            <View style={{
+                                position: 'absolute', top: -4, right: -4, backgroundColor: '#ef4444',
+                                width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+                                borderWidth: 2, borderColor: 'white'
+                            }}>
+                                <Text style={{ color: 'white', fontSize: 10, fontWeight: '900' }}>
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
+                    {/* Profile Picture */}
+                    <TouchableOpacity
+                        style={{
+                            backgroundColor: '#e2e8f0', width: 45, height: 45, borderRadius: 50,
+                            alignItems: 'center', justifyContent: 'center',
+                            borderWidth: 2, borderColor: 'white', shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, elevation: 2
+                        }}
+                        onPress={() => {
+                            setEditName(currentUser?.name);
+                            setEditProfileImage(currentUser?.profileImage);
+                            setProfileModalVisible(true);
+                        }}
+                    >
+                        <Image
+                            source={{ uri: currentUser?.profileImage || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback' }}
+                            style={{ width: '100%', height: '100%', borderRadius: 50 }}
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
@@ -506,6 +584,26 @@ export default function WorkerDashboardScreen({ navigation }) {
                         ) : (
                             <>
                                 <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 24 }}>Account Settings</Text>
+
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', padding: 16, borderRadius: 16, marginBottom: 12 }}
+                                    onPress={() => {
+                                        setProfileModalVisible(false);
+                                        navigation.navigate('SupportChat');
+                                    }}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                        <Ionicons name="chatbubbles" size={20} color="#3b82f6" />
+                                    </View>
+                                    <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1e293b' }}>Contact Admins (Support)</Text>
+
+                                    {unreadCount > 0 && (
+                                        <View style={{ backgroundColor: '#ef4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginRight: 8 }}>
+                                            <Text style={{ color: 'white', fontSize: 12, fontWeight: '800' }}>{unreadCount}</Text>
+                                        </View>
+                                    )}
+                                    <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                                </TouchableOpacity>
 
                                 <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }} onPress={() => { setProfileModalVisible(false); navigation.navigate('WorkerPortfolio'); }}>
                                     <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
