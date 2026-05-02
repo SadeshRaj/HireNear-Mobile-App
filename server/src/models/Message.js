@@ -25,7 +25,13 @@ const messageSchema = new mongoose.Schema(
         location: {
             lat: { type: Number },
             lng: { type: Number }
+        },
+
+        isRead: {
+            type: Boolean,
+            default: false
         }
+
     },
     { timestamps: true }
 );
