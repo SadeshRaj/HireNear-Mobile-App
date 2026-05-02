@@ -9,6 +9,7 @@ import BookingDetailsScreen from '../screens/Client/BookingDetailsScreen';
 import WorkerBookingDetailsScreen from '../screens/Worker/WorkerBookingDetailsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
+import AddReviewScreen from "../screens/Client/AddReviewScreen";
 
 // Auth screens
 import LoginScreen from '../screens/LoginScreen';
@@ -65,42 +66,43 @@ export default function AppNavigator() {
 
     if (isLoading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FB' }}>
-                <ActivityIndicator size="large" color="#0f172a" />
+            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FB'}}>
+                <ActivityIndicator size="large" color="#0f172a"/>
             </View>
         );
     }
 
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={ClientRegisterScreen} />
-            <Stack.Screen name="WorkerRegister" component={WorkerRegisterScreen} />
-            <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
+        <Stack.Navigator screenOptions={{headerShown: false}} initialRouteName={initialRoute}>
+            <Stack.Screen name="Login" component={LoginScreen}/>
+            <Stack.Screen name="Register" component={ClientRegisterScreen}/>
+            <Stack.Screen name="WorkerRegister" component={WorkerRegisterScreen}/>
+            <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen}/>
 
-            <Stack.Screen name="Dashboard" component={MainTabNavigator} initialParams={{ user }} />
-            <Stack.Screen name="CreateJob" component={CreateJobScreen} />
+            <Stack.Screen name="Dashboard" component={MainTabNavigator} initialParams={{user}}/>
+            <Stack.Screen name="CreateJob" component={CreateJobScreen}/>
 
-            <Stack.Screen name="WorkerDashboard" component={WorkerTabNavigator} initialParams={{ user }} />
+            <Stack.Screen name="WorkerDashboard" component={WorkerTabNavigator} initialParams={{user}}/>
 
-            <Stack.Screen name="SubmitBid" component={SubmitBidScreen} />
-            <Stack.Screen name="BidList" component={BidListScreen} />
-            <Stack.Screen name="MyBids" component={MyBidsScreen} />
-            <Stack.Screen name="EditBid" component={EditBidScreen} />
-            <Stack.Screen name="JobBids" component={JobBidsScreen} />
+            <Stack.Screen name="SubmitBid" component={SubmitBidScreen}/>
+            <Stack.Screen name="BidList" component={BidListScreen}/>
+            <Stack.Screen name="MyBids" component={MyBidsScreen}/>
+            <Stack.Screen name="EditBid" component={EditBidScreen}/>
+            <Stack.Screen name="JobBids" component={JobBidsScreen}/>
 
-            <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
-            <Stack.Screen name="WorkerBookingDetails" component={WorkerBookingDetailsScreen} />
+            <Stack.Screen name="BookingDetails" component={BookingDetailsScreen}/>
+            <Stack.Screen name="WorkerBookingDetails" component={WorkerBookingDetailsScreen}/>
 
-            <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen} />
-            <Stack.Screen name="Chat" component={ChatScreen} />
-            <Stack.Screen name="SupportChat" component={SupportChatScreen} />
+            <Stack.Screen name="WorkerPortfolio" component={WorkerPortfolioScreen}/>
+            <Stack.Screen name="Chat" component={ChatScreen}/>
+            <Stack.Screen name="SupportChat" component={SupportChatScreen}/>
 
             {/* Updated Invoice Screens */}
-            <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
-            <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen} />
+            <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen}/>
+            <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen}/>
 
-            <Stack.Screen name="BidDetail" component={BidDetailScreen} />
+            <Stack.Screen name="BidDetail" component={BidDetailScreen}/>
+            <Stack.Screen name="AddReview" component={AddReviewScreen}/>
         </Stack.Navigator>
     );
 }
