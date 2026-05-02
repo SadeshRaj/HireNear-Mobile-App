@@ -47,8 +47,13 @@ const JobPostSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['open', 'closed', 'completed'],
+        enum: ['open', 'closed', 'completed', 'accepted', 'cancelled'], // Added missing statuses for safety
         default: 'open'
+    },
+    reviewId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Review',
+        default: null
     }
 }, { timestamps: true });
 

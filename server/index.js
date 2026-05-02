@@ -18,6 +18,7 @@ const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const supportRoutes = require('./src/routes/supportRoutes');
 const messageRoutes = require('./src/routes/messageRoutes');
+const reviewRoutes = require('./src/routes/reviewRoutes');
 
 const socketHandler = require('./src/config/socket');
 const SupportMessage = require('./src/models/SupportMessage');
@@ -61,6 +62,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
