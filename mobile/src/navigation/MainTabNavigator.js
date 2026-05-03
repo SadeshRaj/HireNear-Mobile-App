@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Import your screens (we use ../screens because this file is inside the navigation folder)
 import DashboardScreen from '../screens/Client/DashboardScreen';
@@ -13,6 +14,8 @@ export default function MainTabNavigator({ route }) {
     // Safely extract the user passed from the Login screen
     const { user } = route?.params || {};
 
+    const insets = useSafeAreaInsets();
+
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
@@ -24,7 +27,7 @@ export default function MainTabNavigator({ route }) {
                 },
                 tabBarActiveTintColor: '#0f172a',
                 tabBarInactiveTintColor: '#94a3b8',
-                tabBarStyle: { height: 70, paddingBottom: 10, paddingTop: 10 },
+                tabBarStyle: { height: 60 + (insets.bottom || 10), paddingBottom: insets.bottom || 10, paddingTop: 10 },
             })}
         >
             <Tab.Screen

@@ -23,6 +23,11 @@ export default function DashboardScreen({ navigation, route }) {
     const [currentUser, setCurrentUser] = useState(route?.params?.user || {});
     const firstName = currentUser?.name ? currentUser.name.split(' ')[0] : 'Guest';
 
+    // Data States
+    const [topWorkers, setTopWorkers] = useState([]);
+    const [userStats, setUserStats] = useState({ openJobs: 0, activeBookings: 0 });
+    const [isLoading, setIsLoading] = useState(true);
+
     // UI States
     const [isProfileModalVisible, setProfileModalVisible] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -56,9 +61,48 @@ export default function DashboardScreen({ navigation, route }) {
         }
     };
 
+    const fetchDashboardData = async () => {
+        try {
+            setIsLoading(true);
+            const token = await AsyncStorage.getItem('token');
+            const userId = currentUser?._id || currentUser?.id;
+            
+            if (token) {
+                // Fetch top workers
+                const workersRes = await fetch(`${API_BASE_URL}/auth/workers/top`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (workersRes.ok) {
+                    const workersData = await workersRes.json();
+                    setTopWorkers(workersData);
+                }
+
+                // Fetch user's jobs for stats
+                if (userId) {
+                    const jobsRes = await fetch(`${API_BASE_URL}/jobs/my-jobs/${userId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (jobsRes.ok) {
+                        const jobsData = await jobsRes.json();
+                        if (jobsData.success && jobsData.jobs) {
+                            const open = jobsData.jobs.filter(j => j.status === 'open').length;
+                            const active = jobsData.jobs.filter(j => j.status === 'accepted').length;
+                            setUserStats({ openJobs: open, activeBookings: active });
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch dashboard data", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useFocusEffect(
         useCallback(() => {
             fetchUnreadCount();
+            fetchDashboardData();
         }, [currentUser])
     );
 
@@ -85,15 +129,7 @@ export default function DashboardScreen({ navigation, route }) {
         };
     }, [currentUser]);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            let nextIndex = activeIndex + 1;
-            if (nextIndex >= CAROUSEL_IMAGES.length) nextIndex = 0;
-            flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-            setActiveIndex(nextIndex);
-        }, 3500);
-        return () => clearInterval(interval);
-    }, [activeIndex]);
+
 
     const handleLogout = async () => {
         try {
@@ -250,38 +286,34 @@ export default function DashboardScreen({ navigation, route }) {
                     </View>
                 </View>
 
-                {/* Carousel */}
-                <View className="mb-8">
-                    <FlatList
-                        ref={flatListRef}
-                        data={CAROUSEL_IMAGES}
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        keyExtractor={(item) => item.id}
-                        onMomentumScrollEnd={(event) => {
-                            const index = Math.round(event.nativeEvent.contentOffset.x / width);
-                            setActiveIndex(index);
-                        }}
-                        renderItem={({ item }) => (
-                            <View style={{ width, paddingHorizontal: 20 }}>
-                                <Image source={{ uri: item.uri }} className="w-full h-48 rounded-[32px]" resizeMode="cover" />
-                                <View className="absolute inset-0 bg-black/20 rounded-[32px] ml-5" style={{ width: width - 40 }} />
-                            </View>
-                        )}
-                    />
-                    <View className="flex-row justify-center mt-4">
-                        {CAROUSEL_IMAGES.map((_, index) => (
-                            <View key={index} className={`h-2 rounded-full mx-1 ${activeIndex === index ? 'w-6 bg-slate-800' : 'w-2 bg-slate-300'}`} />
-                        ))}
-                    </View>
+                {/* Stats Section instead of Carousel */}
+                <View className="px-5 mb-8 flex-row justify-between">
+                    <TouchableOpacity 
+                        className="flex-1 bg-slate-900 rounded-[24px] p-5 mr-2 shadow-md shadow-slate-300"
+                        onPress={() => navigation.navigate('My Posts')}
+                    >
+                        <View className="bg-slate-800 w-10 h-10 rounded-full items-center justify-center mb-3">
+                            <Ionicons name="document-text" size={20} color="white" />
+                        </View>
+                        <Text className="text-white text-3xl font-extrabold">{userStats.openJobs}</Text>
+                        <Text className="text-slate-300 font-medium mt-1">Open Posts</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        className="flex-1 bg-emerald-600 rounded-[24px] p-5 ml-2 shadow-md shadow-emerald-200"
+                        onPress={() => navigation.navigate('My Posts')}
+                    >
+                        <View className="bg-emerald-500 w-10 h-10 rounded-full items-center justify-center mb-3">
+                            <Ionicons name="hammer" size={20} color="white" />
+                        </View>
+                        <Text className="text-white text-3xl font-extrabold">{userStats.activeBookings}</Text>
+                        <Text className="text-emerald-100 font-medium mt-1">Active Bookings</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Categories */}
                 <View className="px-5 mb-8">
                     <View className="flex-row justify-between items-center mb-5">
                         <Text className="text-xl font-bold text-slate-900">Expert Services</Text>
-                        <TouchableOpacity><Text className="text-emerald-700 font-semibold">View All</Text></TouchableOpacity>
                     </View>
                     <View className="flex-row justify-between">
                         <CategoryCard icon="water-drop" title="Plumbing" bgColor="bg-sky-50" iconColor="#0284c7" />
@@ -291,23 +323,35 @@ export default function DashboardScreen({ navigation, route }) {
                     </View>
                 </View>
 
-                {/* Nearby Workers */}
+                {/* Top Rated Workers */}
                 <View className="px-5 mb-8">
-                    <Text className="text-xl font-bold text-slate-900 mb-5">Top Rated Nearby</Text>
-                    <TouchableOpacity className="bg-white rounded-[32px] p-5 shadow-sm border border-gray-100 flex-row items-center mb-4">
-                        <View className="w-16 h-16 bg-slate-100 rounded-full overflow-hidden border-2 border-white shadow-sm">
-                            <Image source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} className="w-full h-full" />
-                        </View>
-                        <View className="flex-1 ml-4">
-                            <View className="flex-row justify-between items-center mb-1">
-                                <Text className="text-lg font-bold text-slate-900">Kamal Perera</Text>
-                                <View className="flex-row items-center bg-amber-50 px-2 py-1 rounded-lg">
-                                    <Ionicons name="star" size={14} color="#d97706" /><Text className="text-amber-700 font-bold ml-1 text-xs">4.9</Text>
+                    <Text className="text-xl font-bold text-slate-900 mb-5">Top Rated Professionals</Text>
+                    {isLoading ? (
+                        <ActivityIndicator size="small" color="#0f172a" />
+                    ) : topWorkers.length > 0 ? (
+                        topWorkers.map(worker => (
+                            <TouchableOpacity 
+                                key={worker._id} 
+                                className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100 flex-row items-center mb-3"
+                                onPress={() => navigation.navigate('CreateJob', { preSelectedWorker: worker._id })}
+                            >
+                                <View className="w-14 h-14 bg-slate-100 rounded-full overflow-hidden border border-gray-200">
+                                    <Image source={{ uri: worker.profileImage || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback' }} className="w-full h-full" />
                                 </View>
-                            </View>
-                            <Text className="text-slate-500 text-sm">Master Electrician</Text>
-                        </View>
-                    </TouchableOpacity>
+                                <View className="flex-1 ml-4">
+                                    <View className="flex-row justify-between items-center mb-1">
+                                        <Text className="text-base font-bold text-slate-900">{worker.name}</Text>
+                                        <View className="flex-row items-center bg-amber-50 px-2 py-1 rounded-lg">
+                                            <Ionicons name="star" size={12} color="#d97706" /><Text className="text-amber-700 font-bold ml-1 text-[10px]">Top</Text>
+                                        </View>
+                                    </View>
+                                    <Text className="text-slate-500 text-xs" numberOfLines={1}>{worker.bio || 'Verified Professional'}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <Text className="text-slate-500">No professionals found nearby.</Text>
+                    )}
                 </View>
 
                 <View className="h-20" />

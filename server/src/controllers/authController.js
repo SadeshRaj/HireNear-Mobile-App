@@ -232,3 +232,15 @@ exports.getWorkerById = async (req, res) => {
         res.status(500).json({ msg: 'Server error' });
     }
 };
+
+exports.getTopWorkers = async (req, res) => {
+    try {
+        const workers = await User.find({ role: 'Worker', accountStatus: { $ne: 'Suspended' } })
+            .select('name bio profileImage skills')
+            .limit(10)
+            .sort({ createdAt: -1 }); // Could sort by rating if reviews existed, using createdAt for now
+        res.json(workers);
+    } catch (error) {
+        res.status(500).json({ msg: 'Server error' });
+    }
+};

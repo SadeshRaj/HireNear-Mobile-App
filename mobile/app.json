@@ -20,7 +20,11 @@
         "foregroundImage": "./assets/HireNear_Logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.sadeshraj.HireNear"
     },
     "web": {
       "favicon": "./assets/HireNear_Logo.png"
@@ -34,6 +38,11 @@
         }
       ],
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0d67cc44-8a2b-413a-a8ad-bb8671c64c32"
+      }
+    }
   }
 }
