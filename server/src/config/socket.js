@@ -1,4 +1,6 @@
 const Message = require('../models/Message');
+const mongoose = require('mongoose');
+
 
 const socketHandler = (io) => {
     io.on('connection', (socket) => {
@@ -32,6 +34,24 @@ const socketHandler = (io) => {
                 console.error("Socket Error:", error);
             }
         });
+
+
+        socket.on('mark_as_read', async ({ bookingId, userId }) => {
+            try {
+                await Message.updateMany(
+                    {
+                        bookingId: new mongoose.Types.ObjectId(bookingId),  // ✅ cast
+                        receiverId: new mongoose.Types.ObjectId(userId),    // ✅ cast
+                        isRead: false
+                    },
+                    { $set: { isRead: true } }
+                );
+                io.to(bookingId).emit('messages_marked_read', { bookingId, userId });
+            } catch (error) {
+                console.error("Read status error:", error);
+            }
+        });
+
 
         socket.on('disconnect', () => {
             console.log('👻 User disconnected');
