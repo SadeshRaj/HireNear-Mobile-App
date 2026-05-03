@@ -29,6 +29,12 @@ export default function ClientRegisterScreen({ navigation }) {
             return;
         }
 
+        const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$&*]).{6,}$/;
+        if (!passwordRegex.test(password)) {
+            setErrorMessage("Password must be at least 6 characters, include a capital letter and a symbol.");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -151,7 +157,7 @@ export default function ClientRegisterScreen({ navigation }) {
 
                     <View className="mb-8">
                         <InputField icon="person-outline" placeholder="Full Name" value={name} onChangeText={setName} />
-                        <InputField icon="mail-outline" placeholder="Email address" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                        <InputField icon="mail-outline" placeholder="Email address" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
                         {/* NEW: Mobile Number Input */}
                         <InputField
@@ -164,6 +170,7 @@ export default function ClientRegisterScreen({ navigation }) {
 
                         <PasswordField placeholder="Create password" value={password} show={showPassword} setShow={setShowPassword} onChangeText={setPassword} />
                         <PasswordField placeholder="Verify password" value={confirmPassword} show={showConfirmPassword} setShow={setShowConfirmPassword} onChangeText={setConfirmPassword} />
+                        <Text className="text-slate-500 text-xs ml-2 mb-2 -mt-3">* Minimum 6 characters, 1 capital letter, and 1 symbol (!@#$&*).</Text>
                     </View>
 
                     <TouchableOpacity
