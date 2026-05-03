@@ -10,7 +10,9 @@ const {
     updateUserStatus,
     deleteUser,
     deletePortfolio,
-    getDashboardOverview // NEW: Imported the new function
+    getDashboardOverview, // NEW: Imported the new function
+    getAllReviews,
+    deleteReview
 } = require('../controllers/adminController');
 const { protect, isAdmin } = require('../middleware/auth');
 
@@ -25,5 +27,7 @@ router.get('/bids', protect, isAdmin, getAllBids);
 router.get('/portfolios', protect, isAdmin, getAllPortfolios);
 router.delete('/portfolios/:id', protect, isAdmin, deletePortfolio);
 router.get('/invoices', protect, isAdmin, getAllInvoices);
+router.get('/reviews', protect, isAdmin, getAllReviews);
+router.delete('/reviews/:reviewId', protect, isAdmin, deleteReview);
 
 module.exports = router;

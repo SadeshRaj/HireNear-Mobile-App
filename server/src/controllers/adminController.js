@@ -3,6 +3,9 @@ const JobPost = require('../models/JobPost');
 const Bid = require('../models/Bid');
 const PortfolioItem = require('../models/PortfolioItem');
 const Invoice = require('../models/Invoice');
+const Review = require('../models/Review');
+const Booking = require('../models/Booking');
+
 
 exports.getAllUsers = async (req, res) => {
     try {
@@ -135,5 +138,59 @@ exports.getDashboardOverview = async (req, res) => {
     } catch (err) {
         console.error("Overview Stats Error:", err);
         res.status(500).json({ error: 'Failed to fetch real database stats' });
+    }
+};
+
+// ==========================================
+// REVIEW MANAGEMENT
+// ==========================================
+
+exports.getAllReviews = async (req, res) => {
+    try {
+        const reviews = await Review.find()
+            .populate('clientId', 'name email profileImage')
+            .populate('workerId', 'name email profileImage')
+            .sort({ createdAt: -1 });
+        res.json(reviews);
+    } catch (err) {
+        console.error("getAllReviews error:", err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.deleteReview = async (req, res) => {
+    try {
+        const { reviewId } = req.params;
+
+        // 1. Find the review first to get the Booking/Job info
+        const review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ success: false, msg: 'Review not found' });
+        }
+
+        const bId = review.bookingId;
+
+        // 2. Delete the actual review
+        await Review.findByIdAndDelete(reviewId);
+
+        // 3. UNLINK: Clear the reviewId from Booking and JobPost
+        const booking = await Booking.findById(bId);
+        if (booking) {
+            booking.reviewId = null;
+            await booking.save();
+
+            const targetJobId = booking.jobId || booking.job;
+            if (targetJobId) {
+                // This sets the field back to null so the button turns RED
+                await JobPost.findByIdAndUpdate(targetJobId, { reviewId: null });
+                console.log("🗑️ Review unlinked from JobPost:", targetJobId);
+            }
+        }
+
+        res.status(200).json({ success: true, msg: 'Review deleted successfully' });
+
+    } catch (error) {
+        console.error("Delete Review Error:", error);
+        res.status(500).json({ success: false, msg: 'Server error' });
     }
 };
