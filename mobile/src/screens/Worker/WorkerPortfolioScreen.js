@@ -3,7 +3,7 @@ import {
     View, Text, TextInput, TouchableOpacity, FlatList,
     Image, ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, Platform, Modal, Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -22,6 +22,7 @@ const formatImageUrl = (url) => {
 };
 
 export default function WorkerPortfolioScreen({ route, navigation }) {
+    const insets = useSafeAreaInsets();
     // Check if a workerId was passed via navigation
     const workerId = route.params?.workerId;
     const isOwnProfile = !workerId;
@@ -178,7 +179,7 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
 
     const handleUpload = async () => {
         if (!title || !description) return showToast('Title and description are required', 'error');
-        if (images.length === 0 && !editingItemId) return showToast('Please add at least one image', 'error');
+        if (images.length === 0) return showToast('Please add at least one image', 'error');
 
         setUploading(true);
         try {
@@ -194,9 +195,13 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
             }
 
             images.forEach((img) => {
-                const filename = img.uri.split('/').pop();
-                const match = /\.(\w+)$/.exec(filename);
-                formData.append('images', { uri: img.uri, name: filename, type: match ? `image/${match[1]}` : `image` });
+                if (img.isExisting) {
+                    formData.append('existingImages', img.originalUrl);
+                } else {
+                    const filename = img.uri.split('/').pop();
+                    const match = /\.(\w+)$/.exec(filename);
+                    formData.append('images', { uri: img.uri, name: filename, type: match ? `image/${match[1]}` : `image` });
+                }
             });
 
             const url = editingItemId ? `${API_BASE_URL}/portfolio/${editingItemId}` : `${API_BASE_URL}/portfolio`;
@@ -367,7 +372,15 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
                                 <Text style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Upload</Text>
                             </TouchableOpacity>
                             {images.map((img, index) => (
-                                <Image key={index} source={{ uri: img.uri }} style={{ width: 100, height: 100, borderRadius: 16, marginRight: 12 }} />
+                                <View key={index} style={{ position: 'relative', marginRight: 12 }}>
+                                    <Image source={{ uri: img.uri }} style={{ width: 100, height: 100, borderRadius: 16 }} />
+                                    <TouchableOpacity 
+                                        onPress={() => setImages(images.filter((_, i) => i !== index))}
+                                        style={{ position: 'absolute', top: -8, right: -8, backgroundColor: '#ef4444', borderRadius: 12, padding: 4 }}
+                                    >
+                                        <Ionicons name="close" size={16} color="white" />
+                                    </TouchableOpacity>
+                                </View>
                             ))}
                         </ScrollView>
 
@@ -456,31 +469,45 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
             {/* Lightbox / Image Viewer */}
             <Modal visible={!!selectedItem} transparent animationType="fade">
                 <View style={{ flex: 1, backgroundColor: 'black' }}>
-                    <SafeAreaView style={{ zIndex: 10 }}>
+                    <View style={{ paddingTop: insets.top > 0 ? insets.top : 40, zIndex: 10, position: 'absolute', width: '100%' }} pointerEvents="box-none">
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10 }}>
                             <TouchableOpacity onPress={() => setSelectedItem(null)} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}>
                                 <Ionicons name="close" size={24} color="white" />
                             </TouchableOpacity>
                             {isOwnProfile && activeTab === 'portfolio' && (
-                                <TouchableOpacity onPress={() => {
-                                    const idToDelete = selectedItem._id;
-                                    setSelectedItem(null);
-                                    Alert.alert("Delete", "Remove this project?", [
-                                        { text: "Cancel", style: "cancel" },
-                                        { text: "Delete", style: "destructive", onPress: async () => {
-                                                const token = await AsyncStorage.getItem('token');
-                                                await fetch(`${API_BASE_URL}/portfolio/${idToDelete}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-                                                setItems(items.filter(i => i._id !== idToDelete));
-                                            }}
-                                    ]);
-                                }} style={{ padding: 8 }}>
-                                    <Ionicons name="trash-outline" size={24} color="#ef4444" />
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <TouchableOpacity onPress={() => {
+                                        setEditingItemId(selectedItem._id);
+                                        setTitle(selectedItem.title || '');
+                                        setDescription(selectedItem.description || '');
+                                        setFinalAddress(selectedItem.location?.address || '');
+                                        setFinalCoords(selectedItem.location?.lat ? { latitude: selectedItem.location.lat, longitude: selectedItem.location.lng } : null);
+                                        setImages(selectedItem.images ? selectedItem.images.map(img => ({ uri: formatImageUrl(img), originalUrl: img, isExisting: true })) : []);
+                                        setSelectedItem(null);
+                                        setIsFormVisible(true);
+                                    }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}>
+                                        <Ionicons name="pencil" size={20} color="white" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => {
+                                        const idToDelete = selectedItem._id;
+                                        setSelectedItem(null);
+                                        Alert.alert("Delete", "Remove this project?", [
+                                            { text: "Cancel", style: "cancel" },
+                                            { text: "Delete", style: "destructive", onPress: async () => {
+                                                    const token = await AsyncStorage.getItem('token');
+                                                    await fetch(`${API_BASE_URL}/portfolio/${idToDelete}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+                                                    setItems(items.filter(i => i._id !== idToDelete));
+                                                }}
+                                        ]);
+                                    }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}>
+                                        <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                                    </TouchableOpacity>
+                                </View>
                             )}
                         </View>
-                    </SafeAreaView>
+                    </View>
 
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <View style={{ flex: 1, justifyContent: 'center', zIndex: 1 }}>
                         {selectedItem?.images && (
                             <ScrollView
                                 horizontal
