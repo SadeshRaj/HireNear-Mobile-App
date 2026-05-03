@@ -150,7 +150,11 @@ const getLocalIP = () => {
     return 'localhost';
 };
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Local Network URL: http://${getLocalIP()}:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Local Network URL: http://${getLocalIP()}:${PORT}`);
+    });
+}
+
+module.exports = app;

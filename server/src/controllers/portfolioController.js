@@ -27,6 +27,13 @@ exports.createPortfolioItem = async (req, res) => {
     try {
         const { title, description, address, lat, lng } = req.body;
 
+        if (!title || !description) {
+            return res.status(400).json({ msg: 'Title and description are required' });
+        }
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ msg: 'At least one image is required' });
+        }
+
         let imageUrls = [];
         if (req.files && req.files.length > 0) {
             imageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
