@@ -36,9 +36,11 @@ export default function BidDetailScreen({ route, navigation }) {
 
                             if (response.ok) {
                                 Alert.alert("Success", `Bid ${action}ed successfully.`);
-                                navigation.goBack();
-                                // Note: We might need a callback to refresh the list in JobBidsScreen
-                                if (route.params.refreshBids) route.params.refreshBids();
+                                navigation.navigate({
+                                    name: 'JobBids',
+                                    params: { refresh: Date.now() },
+                                    merge: true,
+                                });
                             } else {
                                 Alert.alert("Error", "Failed to update bid.");
                             }
