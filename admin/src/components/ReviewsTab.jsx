@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Trash2, Star, User, Calendar, MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Trash2, Star, User, Calendar, MessageSquare, AlertCircle, CheckCircle, Image as ImageIcon, X } from 'lucide-react';
 import { API_BASE_URL } from '../utils/config';
 
 export default function ReviewsTab() {
@@ -8,6 +8,7 @@ export default function ReviewsTab() {
     const [searchTerm, setSearchTerm] = useState('');
     const [toast, setToast] = useState(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+    const [selectedImage, setSelectedImage] = useState(null);
 
     const fetchReviews = async () => {
         try {
@@ -162,10 +163,28 @@ export default function ReviewsTab() {
                                         <p className="text-slate-700 font-medium leading-relaxed max-w-md line-clamp-2">
                                             {review.comment}
                                         </p>
-                                        {review.images && review.images.length > 0 && (
-                                            <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
-                                                +{review.images.length} images attached
-                                            </p>
+                                        {review.images && review.images.filter(img => img && img.trim() !== '').length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {review.images.filter(img => img && img.trim() !== '').map((img, idx) => (
+                                                    <div 
+                                                        key={idx} 
+                                                        className="relative group/img cursor-zoom-in"
+                                                        onClick={() => setSelectedImage(img)}
+                                                    >
+                                                        <img
+                                                            src={img}
+                                                            alt="Review attachment"
+                                                            className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm group-hover/img:border-emerald-500 transition-all"
+                                                            onError={(e) => {
+                                                                e.target.parentElement.style.display = 'none';
+                                                            }}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 rounded-xl transition-all flex items-center justify-center">
+                                                            <ImageIcon size={14} className="text-white opacity-0 group-hover/img:opacity-100" />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         )}
                                     </td>
                                     <td className="py-4">
@@ -215,6 +234,27 @@ export default function ReviewsTab() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Image Viewer Modal */}
+            {selectedImage && (
+                <div 
+                    className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <button 
+                        className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <X size={24} />
+                    </button>
+                    <img 
+                        src={selectedImage} 
+                        alt="Full size review" 
+                        className="max-w-full max-h-full rounded-[32px] shadow-2xl object-contain animate-in zoom-in-95 duration-300"
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 </div>
             )}
         </div>
