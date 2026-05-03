@@ -84,6 +84,7 @@ exports.uploadPaymentSlip = async (req, res) => {
         const slipUrl = await uploadToCloudinary(req.file.buffer);
         invoice.paymentSlipUrl = slipUrl;
         invoice.status = 'verifying';
+        invoice.rejectionReason = null; // Reset reason on re-upload
         await invoice.save();
         res.json({ success: true, invoice, msg: 'Payment slip uploaded.' });
     } catch (err) { res.status(500).json({ success: false, msg: err.message }); }
@@ -101,6 +102,21 @@ exports.verifyPayment = async (req, res) => {
         if (booking && booking.jobId) await Job.findByIdAndUpdate(booking.jobId, { status: 'completed' });
 
         res.json({ success: true, invoice, msg: 'Payment verified.' });
+    } catch (err) { res.status(500).json({ success: false, msg: err.message }); }
+};
+
+exports.rejectPaymentSlip = async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const invoice = await Invoice.findById(req.params.id).populate('workerId', 'name phone').populate('clientId', 'name');
+        if (!invoice) return res.status(404).json({ success: false, msg: 'Invoice not found' });
+        if (!reason) return res.status(400).json({ success: false, msg: 'Rejection reason is required' });
+
+        invoice.status = 'rejected';
+        invoice.rejectionReason = reason;
+        await invoice.save();
+
+        res.json({ success: true, invoice, msg: 'Payment slip rejected.' });
     } catch (err) { res.status(500).json({ success: false, msg: err.message }); }
 };
 

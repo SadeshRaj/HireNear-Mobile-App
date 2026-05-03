@@ -13,7 +13,8 @@ const invoiceSchema = new mongoose.Schema({
     items: [invoiceItemSchema],
     totalAmount: { type: Number, required: true },
     paymentSlipUrl: { type: String, default: null },
-    status: { type: String, enum: ['pending', 'verifying', 'paid'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'verifying', 'paid', 'rejected'], default: 'pending' },
+    rejectionReason: { type: String, default: null },
     isUpdated: { type: Boolean, default: false }
 }, { timestamps: true });
 
