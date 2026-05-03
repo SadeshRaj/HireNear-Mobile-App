@@ -1,12 +1,39 @@
 const Review = require('../models/Review');
 const JobPost = require('../models/JobPost');
-const Booking =require('../models/Booking');
+const Booking = require('../models/Booking');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Helper function to upload buffer to Cloudinary
+const uploadToCloudinary = (fileBuffer) => {
+    return new Promise((resolve, reject) => {
+        let stream = cloudinary.uploader.upload_stream(
+            { folder: 'review_images' },
+            (error, result) => {
+                if (result) resolve(result.secure_url);
+                else reject(error);
+            }
+        );
+        streamifier.createReadStream(fileBuffer).pipe(stream);
+    });
+};
 
 // 1. CREATE REVIEW
 exports.createReview = async (req, res) => {
     try {
         const { rating, comment, bookingId, clientId, workerId } = req.body;
-        const images = req.files ? req.files.map(file => file.path) : [];
+        
+        let imageUrls = [];
+        if (req.files && req.files.length > 0) {
+            imageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+        }
 
         // 1. Save the new review
         const newReview = new Review({
@@ -15,7 +42,7 @@ exports.createReview = async (req, res) => {
             bookingId,
             clientId,
             workerId,
-            images
+            images: imageUrls
         });
 
         await newReview.save();
@@ -63,7 +90,9 @@ exports.createReview = async (req, res) => {
 exports.getWorkerReviews = async (req, res) => {
     try {
         const { workerId } = req.params;
-        const reviews = await Review.find({ workerId }).sort({ createdAt: -1 });
+        const reviews = await Review.find({ workerId })
+            .populate('clientId', 'name profileImage')
+            .sort({ createdAt: -1 });
 
         // FIXED: Status 260 changed to 200 (OK)
         res.status(200).json({ reviews });
@@ -115,8 +144,11 @@ exports.updateReview = async (req, res) => {
             return res.status(404).json({ msg: 'Review not found' });
         }
 
-        // Handle new images if Multer is used
-        const newImages = req.files ? req.files.map(file => file.path) : [];
+        // Handle new images with Cloudinary
+        let newImages = [];
+        if (req.files && req.files.length > 0) {
+            newImages = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+        }
         const updatedImages = [...review.images, ...newImages];
 
         // Update the fields
