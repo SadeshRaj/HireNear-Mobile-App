@@ -43,6 +43,11 @@ export default function WorkerRegisterScreen({ navigation }) {
             return showError("Please fill in all fields and select at least one skill.");
         }
 
+        const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$&*]).{6,}$/;
+        if (!passwordRegex.test(password)) {
+            return showError("Password must be at least 6 characters, include a capital letter and a symbol.");
+        }
+
         setLoading(true);
         setErrorMessage('');
 
@@ -102,17 +107,17 @@ export default function WorkerRegisterScreen({ navigation }) {
                     <View className="space-y-4 mb-6">
                         <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
                             <Ionicons name="person-outline" size={20} color="#94a3b8" />
-                            <TextInput placeholder="Full Name" className="flex-1 ml-3 text-slate-800" value={name} onChangeText={setName} />
+                            <TextInput placeholder="Full Name" className="flex-1 ml-3 text-slate-800" value={name} onChangeText={setName} placeholderTextColor="#94a3b8" />
                         </View>
 
                         <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mt-3">
                             <Ionicons name="mail-outline" size={20} color="#94a3b8" />
-                            <TextInput placeholder="Email" className="flex-1 ml-3 text-slate-800" value={email} onChangeText={setEmail} autoCapitalize="none" />
+                            <TextInput placeholder="Email" className="flex-1 ml-3 text-slate-800" value={email} onChangeText={setEmail} autoCapitalize="none" placeholderTextColor="#94a3b8" />
                         </View>
 
                         <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mt-3">
                             <Ionicons name="call-outline" size={20} color="#94a3b8" />
-                            <TextInput placeholder="Phone" className="flex-1 ml-3 text-slate-800" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+                            <TextInput placeholder="Phone" className="flex-1 ml-3 text-slate-800" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholderTextColor="#94a3b8" />
                         </View>
                     </View>
 
@@ -138,6 +143,7 @@ export default function WorkerRegisterScreen({ navigation }) {
                             className="flex-1 text-slate-800"
                             value={customSkill}
                             onChangeText={setCustomSkill}
+                            placeholderTextColor="#94a3b8"
                         />
                         <TouchableOpacity onPress={addCustomSkill} className="bg-slate-100 p-2 rounded-xl">
                             <Ionicons name="add" size={20} color="#0f172a" />
@@ -145,13 +151,14 @@ export default function WorkerRegisterScreen({ navigation }) {
                     </View>
 
                     <View className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mb-4">
-                        <TextInput placeholder="Professional Bio" className="h-20 text-slate-800" multiline value={bio} onChangeText={setBio} textAlignVertical="top" />
+                        <TextInput placeholder="Professional Bio" className="h-20 text-slate-800" multiline value={bio} onChangeText={setBio} textAlignVertical="top" placeholderTextColor="#94a3b8" />
                     </View>
 
-                    <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mb-8">
+                    <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 mb-2">
                         <Ionicons name="lock-closed-outline" size={20} color="#94a3b8" />
-                        <TextInput placeholder="Password" secureTextEntry className="flex-1 ml-3 text-slate-800" value={password} onChangeText={setPassword} />
+                        <TextInput placeholder="Password" secureTextEntry className="flex-1 ml-3 text-slate-800" value={password} onChangeText={setPassword} placeholderTextColor="#94a3b8" />
                     </View>
+                    <Text className="text-slate-500 text-xs ml-2 mb-8">* Minimum 6 characters, 1 capital letter, and 1 symbol (!@#$&*).</Text>
 
                     <TouchableOpacity
                         className={`bg-blue-600 rounded-3xl py-4 items-center shadow-lg mb-10 ${loading ? 'opacity-70' : ''}`}

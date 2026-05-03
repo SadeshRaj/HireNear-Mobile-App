@@ -17,6 +17,7 @@ import LoginScreen from '../screens/LoginScreen';
 import ClientRegisterScreen from '../screens/Client/ClientRegisterScreen';
 import WorkerRegisterScreen from '../screens/Worker/WorkerRegisterScreen';
 import VerifyOTPScreen from '../screens/VerifyOTPScreen';
+import RecoverPasswordScreen from '../screens/RecoverPasswordScreen';
 
 // Navigators
 import MainTabNavigator from './MainTabNavigator';
@@ -79,6 +80,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Register" component={ClientRegisterScreen} />
             <Stack.Screen name="WorkerRegister" component={WorkerRegisterScreen} />
             <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
+            <Stack.Screen name="RecoverPassword" component={RecoverPasswordScreen} />
 
             <Stack.Screen name="Dashboard" component={MainTabNavigator} initialParams={{ user }} />
             <Stack.Screen name="CreateJob" component={CreateJobScreen} />

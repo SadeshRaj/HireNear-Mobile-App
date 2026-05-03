@@ -164,6 +164,84 @@ exports.loginUser = async (req, res) => {
     }
 };
 
+// ─── POST /api/auth/forgot-password ──────────────────────────────────────────
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { phone } = req.body;
+        const formattedPhone = formatPhone(phone);
+
+        const user = await User.findOne({ phone: formattedPhone });
+        if (!user) return res.status(404).json({ msg: 'User with this phone number not found' });
+
+        const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        if (!process.env.TEXTLK_API_TOKEN || !process.env.TEXTLK_SENDER_ID) {
+            console.warn('⚠️  SMS credentials missing — DEV MODE: auto-generating OTP for reset');
+            user.otp = generatedOtp;
+            user.expireAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+            await user.save();
+            return res.status(200).json({ msg: 'OTP sent (dev mode — SMS skipped)', phone: formattedPhone });
+        }
+
+        try {
+            const smsResponse = await axios.post('https://app.text.lk/api/v3/sms/send',
+                {
+                    recipient: formattedPhone,
+                    sender_id: process.env.TEXTLK_SENDER_ID,
+                    type: 'plain',
+                    message: `Your HireNear password reset code is: ${generatedOtp}. Do not share this code.`
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.TEXTLK_API_TOKEN}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+            if (smsResponse.data.status === 'success' || smsResponse.data.status === true) {
+                user.otp = generatedOtp;
+                user.expireAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+                await user.save();
+                return res.status(200).json({ msg: 'OTP sent successfully', phone: formattedPhone });
+            } else {
+                return res.status(400).json({ error: 'Failed to send SMS' });
+            }
+        } catch (smsErr) {
+            console.error("SMS Gateway Error:", smsErr.response ? smsErr.response.data : smsErr.message);
+            return res.status(500).json({ error: 'SMS Service Unreachable.' });
+        }
+    } catch (err) {
+        console.error('Forgot Password Error:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ─── POST /api/auth/reset-password ───────────────────────────────────────────
+exports.resetPassword = async (req, res) => {
+    try {
+        const { phone, otp, newPassword } = req.body;
+        const formattedPhone = formatPhone(phone);
+        const stringOtp = String(otp);
+
+        const user = await User.findOne({ phone: formattedPhone, otp: stringOtp });
+
+        if (!user) return res.status(400).json({ msg: 'Invalid or expired OTP' });
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        user.otp = null;
+        user.expireAt = undefined;
+
+        await user.save();
+
+        res.status(200).json({ msg: 'Password reset successfully' });
+    } catch (err) {
+        console.error("Reset Password Error:", err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 // ─── PUT /api/auth/change-password ───────────────────────────────────────────
 exports.changePassword = async (req, res) => {
     try {

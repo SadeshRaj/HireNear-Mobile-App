@@ -28,7 +28,16 @@ export default function LoginScreen({ navigation }) {
                 body: JSON.stringify({ email, password }),
             });
 
-            const data = await response.json();
+            const rawText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (parseError) {
+                console.error("JSON Parse Error. The server did not return JSON. Status:", response.status);
+                setError(`Server Error (Status: ${response.status})`);
+                setLoading(false);
+                return;
+            }
 
             if (response.ok) {
                 // Store token, user info, and the strict rememberMe preference
@@ -54,7 +63,8 @@ export default function LoginScreen({ navigation }) {
                     );
                 }
             }
-        } catch {
+        } catch (error) {
+            console.error('Login Error:', error);
             setError('Network error. Make sure the server is running.');
         } finally {
             setLoading(false);
@@ -123,7 +133,7 @@ export default function LoginScreen({ navigation }) {
                         <Text className="text-slate-600 font-medium">Remember me</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.navigate('RecoverPassword')}>
                         <Text className="text-emerald-700 font-semibold">Recover Password</Text>
                     </TouchableOpacity>
                 </View>
