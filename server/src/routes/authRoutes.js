@@ -7,7 +7,9 @@ const {
     changePassword,
     updateProfile,
     getWorkerById,
-    getTopWorkers
+    getTopWorkers,
+    forgotPassword,
+    resetPassword
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload'); // Added upload middleware
@@ -15,6 +17,8 @@ const upload = require('../middleware/upload'); // Added upload middleware
 router.post('/register', registerUser);
 router.post('/verify-otp', verifyOTP);
 router.post('/login', loginUser);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.put('/change-password', protect, changePassword);
 
 // Apply the upload middleware for the profile image
