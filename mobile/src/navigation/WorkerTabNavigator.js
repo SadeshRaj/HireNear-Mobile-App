@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import WorkerDashboardScreen from '../screens/Worker/WorkerDashboardScreen';
 import MyBidsScreen from '../screens/Worker/MyBidsScreen';
@@ -16,6 +17,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 export default function WorkerTabNavigator({ route }) {
     const { user } = route?.params || {};
     const [activeJobsCount, setActiveJobsCount] = useState(0);
+    const insets = useSafeAreaInsets();
 
     useFocusEffect(
         useCallback(() => {
@@ -56,8 +58,8 @@ export default function WorkerTabNavigator({ route }) {
                 tabBarActiveTintColor: '#0f172a',
                 tabBarInactiveTintColor: '#94a3b8',
                 tabBarStyle: {
-                    height: 70,
-                    paddingBottom: 10,
+                    height: 60 + (insets.bottom || 10),
+                    paddingBottom: insets.bottom || 10,
                     paddingTop: 10,
                     borderTopColor: '#f1f5f9',
                 },
