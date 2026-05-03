@@ -64,6 +64,14 @@ exports.submitBid = async (req, res) => {
         // Collect uploaded file paths
         const attachments = req.files ? req.files.map(f => f.path) : [];
 
+        // Server-side validation for estimatedTime
+        if (estimatedTime) {
+            const timeVal = parseFloat(estimatedTime);
+            if (isNaN(timeVal) || timeVal <= 0) {
+                return res.status(400).json({ msg: 'Estimated completion time must be a positive number.' });
+            }
+        }
+
         const bid = new Bid({
             jobId,
             workerId: req.user._id,
@@ -150,6 +158,14 @@ exports.updateBid = async (req, res) => {
         }
 
         const { price, message, estimatedTime } = req.body;
+
+        // Server-side validation for estimatedTime
+        if (estimatedTime !== undefined) {
+            const timeVal = parseFloat(estimatedTime);
+            if (isNaN(timeVal) || timeVal <= 0) {
+                return res.status(400).json({ msg: 'Estimated completion time must be a positive number.' });
+            }
+        }
         if (price) bid.price = Number(price);
         if (message !== undefined) bid.message = message;
         if (estimatedTime !== undefined) bid.estimatedTime = estimatedTime;

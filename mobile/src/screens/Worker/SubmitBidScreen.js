@@ -47,8 +47,10 @@ export default function SubmitBidScreen({ navigation, route }) {
             setError('Please enter a valid price.');
             return;
         }
-        if (!estValue || isNaN(Number(estValue)) || Number(estValue) <= 0) {
-            setError('Please enter a valid estimated completion time.');
+        // Stricter validation
+        const numericEst = parseFloat(estValue);
+        if (!estValue || isNaN(numericEst) || numericEst <= 0) {
+            setError('Please enter a valid numeric estimated completion time.');
             return;
         }
         setError('');
@@ -174,7 +176,7 @@ export default function SubmitBidScreen({ navigation, route }) {
                                     placeholderTextColor="#94a3b8"
                                     value={estValue}
                                     onChangeText={setEstValue}
-                                    keyboardType="numeric"
+                                    keyboardType="decimal-pad"
                                 />
                             </View>
 
