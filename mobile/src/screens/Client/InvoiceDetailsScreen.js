@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Image, ScrollView, Platform, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Image, ScrollView, Platform, TextInput, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +26,11 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
     const [editDesc, setEditDesc] = useState('');
     const [editAmount, setEditAmount] = useState('');
     const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+    // Reject State
+    const [rejectModalVisible, setRejectModalVisible] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+    const [rejecting, setRejecting] = useState(false);
 
     useEffect(() => {
         fetchInvoice();
@@ -222,6 +227,32 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
         ]);
     };
 
+    const handleRejectPayment = async () => {
+        if (!rejectReason.trim()) return Alert.alert("Error", "Please provide a reason.");
+        setRejecting(true);
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const res = await fetch(`${API_BASE_URL}/invoices/${invoice._id}/reject`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ reason: rejectReason })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setInvoice(data.invoice);
+                setRejectModalVisible(false);
+                setRejectReason('');
+                Alert.alert("Rejected", "Payment slip rejected. Client has been notified.");
+            } else {
+                Alert.alert("Error", data.msg || "Failed to reject.");
+            }
+        } catch (err) {
+            Alert.alert("Error", "Rejection failed.");
+        } finally {
+            setRejecting(false);
+        }
+    };
+
     const downloadPDF = async () => {
         let logoSrc = '';
         try {
@@ -347,6 +378,7 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
     let badgeColor = 'bg-amber-100'; let badgeText = 'Payment Pending'; let badgeTextColor = 'text-amber-700';
     if (invoice.status === 'verifying') { badgeColor = 'bg-blue-100'; badgeText = 'Verifying Payment'; badgeTextColor = 'text-blue-700'; }
     else if (invoice.status === 'paid') { badgeColor = 'bg-emerald-100'; badgeText = 'Paid in Full'; badgeTextColor = 'text-emerald-700'; }
+    else if (invoice.status === 'rejected') { badgeColor = 'bg-red-100'; badgeText = 'Payment Rejected'; badgeTextColor = 'text-red-700'; }
 
     const fallbackImage = 'https://via.placeholder.com/400x300?text=No+Slip+Available';
     const activeItems = isEditing ? editItems : invoice.items;
@@ -469,12 +501,21 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
                 )}
 
                 {/* CLIENT ACTIONS */}
-                {role === 'client' && invoice.status === 'pending' && (
+                {role === 'client' && invoice.status === 'rejected' && invoice.rejectionReason && (
+                    <View className="bg-red-50 p-4 rounded-xl mb-4 border border-red-200">
+                        <Text className="text-red-800 font-bold mb-1">Payment Rejected by Worker:</Text>
+                        <Text className="text-red-700 text-sm">{invoice.rejectionReason}</Text>
+                    </View>
+                )}
+
+                {role === 'client' && (invoice.status === 'pending' || invoice.status === 'rejected') && (
                     <TouchableOpacity onPress={handleUploadSlip} disabled={uploading} className="bg-slate-900 p-4 rounded-2xl items-center flex-row justify-center shadow-md mb-6">
                         {uploading ? <ActivityIndicator color="#fff" /> : (
                             <>
                                 <Ionicons name="cloud-upload" size={24} color="#fff" />
-                                <Text className="text-white text-lg font-bold ml-2">Upload Payment Slip</Text>
+                                <Text className="text-white text-lg font-bold ml-2">
+                                    {invoice.status === 'rejected' ? 'Re-upload Payment Slip' : 'Upload Payment Slip'}
+                                </Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -510,14 +551,20 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
                             </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={handleVerifyPayment} disabled={verifying} className="bg-emerald-600 p-4 rounded-2xl items-center flex-row justify-center shadow-md mt-2">
-                            {verifying ? <ActivityIndicator color="#fff" /> : (
-                                <>
-                                    <Ionicons name="checkmark-done" size={24} color="#fff" />
-                                    <Text className="text-white text-lg font-bold ml-2">Accept Payment</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
+                        <View className="flex-row gap-3 mt-2">
+                            <TouchableOpacity onPress={() => setRejectModalVisible(true)} disabled={verifying} className="flex-1 border border-red-200 bg-red-50 p-4 rounded-2xl items-center flex-row justify-center">
+                                <Ionicons name="close-circle" size={20} color="#ef4444" />
+                                <Text className="text-red-600 text-sm font-bold ml-1">Reject</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleVerifyPayment} disabled={verifying} className="flex-[2] bg-emerald-600 p-4 rounded-2xl items-center flex-row justify-center shadow-md">
+                                {verifying ? <ActivityIndicator color="#fff" /> : (
+                                    <>
+                                        <Ionicons name="checkmark-done" size={20} color="#fff" />
+                                        <Text className="text-white text-base font-bold ml-2">Accept Payment</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 )}
 
@@ -553,6 +600,32 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
                     swipeToCloseEnabled={true}
                 />
             )}
+
+            {/* REJECTION MODAL */}
+            <Modal animationType="fade" transparent={true} visible={rejectModalVisible} onRequestClose={() => setRejectModalVisible(false)}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-5">
+                    <View className="bg-white w-full rounded-3xl p-6">
+                        <Text className="text-xl font-bold text-slate-800 mb-2">Reject Payment Slip</Text>
+                        <Text className="text-slate-500 mb-4 text-sm">Please provide a reason so the client knows what to fix.</Text>
+                        <TextInput
+                            className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 mb-6 h-24"
+                            placeholder="E.g., Amount doesn't match, image is blurry..."
+                            multiline
+                            textAlignVertical="top"
+                            value={rejectReason}
+                            onChangeText={setRejectReason}
+                        />
+                        <View className="flex-row gap-3">
+                            <TouchableOpacity onPress={() => setRejectModalVisible(false)} className="flex-1 bg-slate-200 p-4 rounded-xl items-center">
+                                <Text className="text-slate-700 font-bold">Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleRejectPayment} disabled={rejecting} className="flex-1 bg-red-600 p-4 rounded-xl items-center flex-row justify-center">
+                                {rejecting ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold">Submit</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
