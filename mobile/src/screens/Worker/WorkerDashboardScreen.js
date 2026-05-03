@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity, Image,
-    ActivityIndicator, RefreshControl, ScrollView, Modal, TextInput
+    ActivityIndicator, RefreshControl, ScrollView, Modal, TextInput,
+    TouchableWithoutFeedback, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -46,8 +47,12 @@ export default function WorkerDashboardScreen({ navigation }) {
     const [activeBudget, setActiveBudget] = useState('All');
     const [currentUser, setCurrentUser] = useState(null);
     const workerName = currentUser?.name ? currentUser.name.split(' ')[0] : 'there';
+    const [fullScreenImage, setFullScreenImage] = useState(null);
 
     const [workerLocation, setWorkerLocation] = useState(null);
+
+    // ✅ My bid job IDs state (moved inside component)
+    const [myBidJobIds, setMyBidJobIds] = useState(new Set());
 
     // Custom Toast State
     const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
@@ -75,6 +80,27 @@ export default function WorkerDashboardScreen({ navigation }) {
         setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
     };
 
+    // ✅ Fetch worker's existing bids to know which jobs they already bid on
+    const fetchMyBids = async () => {
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const res = await fetch(`${API_BASE_URL}/bids/my`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                const bidJobIds = new Set(
+                    data
+                        .filter(b => b.status !== 'withdrawn')
+                        .map(b => b.jobId?._id || b.jobId)
+                );
+                setMyBidJobIds(bidJobIds);
+            }
+        } catch (err) {
+            console.log("Error fetching my bids", err);
+        }
+    };
+
     // Fetch unread support messages count
     const fetchUnreadCount = async () => {
         try {
@@ -97,6 +123,7 @@ export default function WorkerDashboardScreen({ navigation }) {
     useFocusEffect(
         useCallback(() => {
             fetchUnreadCount();
+            fetchMyBids(); // ✅ refresh bid status when screen is focused
         }, [currentUser])
     );
 
@@ -185,11 +212,13 @@ export default function WorkerDashboardScreen({ navigation }) {
     useEffect(() => {
         setLoading(true);
         fetchJobs();
+        fetchMyBids(); // ✅ also fetch on filter change
     }, [fetchJobs]);
 
     const onRefresh = () => {
         setRefreshing(true);
         fetchJobs();
+        fetchMyBids();
     };
 
     const handleLogout = async () => {
@@ -310,6 +339,7 @@ export default function WorkerDashboardScreen({ navigation }) {
             distKm = isNaN(d) ? null : Math.round(d * 10) / 10;
         }
         const isNearby = distKm !== null && distKm < 5;
+        const alreadyBid = myBidJobIds.has(item._id); // ✅
 
         const distLabel = distKm === null ? null
             : distKm < 1 ? `${Math.round(distKm * 1000)} m`
@@ -320,8 +350,8 @@ export default function WorkerDashboardScreen({ navigation }) {
                 backgroundColor: 'white', borderRadius: 28, padding: 20, marginBottom: 16,
                 shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-                borderWidth: isNearby ? 1.5 : 1,
-                borderColor: isNearby ? '#bbf7d0' : '#f1f5f9',
+                borderWidth: alreadyBid ? 1.5 : isNearby ? 1.5 : 1,
+                borderColor: alreadyBid ? '#bfdbfe' : isNearby ? '#bbf7d0' : '#f1f5f9',
             }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -347,11 +377,35 @@ export default function WorkerDashboardScreen({ navigation }) {
                         <Ionicons name="cash-outline" size={14} color="#059669" />
                         <Text style={{ color: '#047857', fontWeight: '700', fontSize: 13, marginLeft: 5 }}>{formatBudget(item.budget)}</Text>
                     </View>
+
+                    {/* ✅ Bid placed badge next to budget */}
+                    {alreadyBid && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
+                            <Ionicons name="checkmark-circle" size={14} color="#3b82f6" />
+                            <Text style={{ color: '#2563eb', fontWeight: '700', fontSize: 13, marginLeft: 5 }}>Bid Placed</Text>
+                        </View>
+                    )}
                 </View>
 
                 {!!item.description && (
                     <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 19, marginBottom: 14 }} numberOfLines={2}>{item.description}</Text>
                 )}
+
+                {/* ✅ ADD THIS - Job images */}
+                {item.images && item.images.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                        {item.images.map((img, index) => (
+                            <TouchableOpacity key={index} onPress={() => setFullScreenImage(img)} activeOpacity={0.85}>
+                                <Image
+                                    source={{ uri: img }}
+                                    style={{ width: 80, height: 80, borderRadius: 12, marginRight: 8, backgroundColor: '#f1f5f9' }}
+                                    resizeMode="cover"
+                                />
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
+
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     {isNearby ? (
@@ -359,12 +413,27 @@ export default function WorkerDashboardScreen({ navigation }) {
                             <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>🔥 Nearby – High Priority</Text>
                         </View>
                     ) : <View />}
-                    <TouchableOpacity
-                        style={{ backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 }}
-                        onPress={() => navigation.navigate('SubmitBid', { job: item })}
-                    >
-                        <Text style={{ color: 'white', fontWeight: '800', fontSize: 13 }}>Place Bid →</Text>
-                    </TouchableOpacity>
+
+                    {alreadyBid ? (
+                        <View style={{
+                            backgroundColor: '#eff6ff', borderRadius: 16,
+                            paddingHorizontal: 20, paddingVertical: 10,
+                            flexDirection: 'row', alignItems: 'center'
+                        }}>
+                            <Ionicons name="checkmark-circle" size={14} color="#3b82f6" />
+                            <Text style={{ color: '#2563eb', fontWeight: '800', fontSize: 13, marginLeft: 6 }}>
+                                Bid Submitted
+                            </Text>
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={{ backgroundColor: '#0f172a', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 }}
+                            onPress={() => navigation.navigate('SubmitBid', { job: item })}
+                        >
+                            <Text style={{ color: 'white', fontWeight: '800', fontSize: 13 }}>Place Bid →</Text>
+                        </TouchableOpacity>
+                    )}
+
                 </View>
             </View>
         );
@@ -396,7 +465,6 @@ export default function WorkerDashboardScreen({ navigation }) {
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {/* NEW: Chat Icon with Notification Badge matching Client Dashboard */}
                     <TouchableOpacity
                         style={{
                             backgroundColor: 'white', padding: 10, borderRadius: 50, marginRight: 12,
@@ -419,7 +487,6 @@ export default function WorkerDashboardScreen({ navigation }) {
                         )}
                     </TouchableOpacity>
 
-                    {/* Profile Picture */}
                     <TouchableOpacity
                         style={{
                             backgroundColor: '#e2e8f0', width: 45, height: 45, borderRadius: 50,
@@ -596,7 +663,6 @@ export default function WorkerDashboardScreen({ navigation }) {
                                         <Ionicons name="chatbubbles" size={20} color="#3b82f6" />
                                     </View>
                                     <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1e293b' }}>Contact Admins (Support)</Text>
-
                                     {unreadCount > 0 && (
                                         <View style={{ backgroundColor: '#ef4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginRight: 8 }}>
                                             <Text style={{ color: 'white', fontSize: 12, fontWeight: '800' }}>{unreadCount}</Text>
@@ -640,6 +706,40 @@ export default function WorkerDashboardScreen({ navigation }) {
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
+
+            {/* ✅ Full Screen Image Modal */}
+            <Modal
+                visible={!!fullScreenImage}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setFullScreenImage(null)}
+            >
+                <StatusBar backgroundColor="black" barStyle="light-content" />
+                <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={() => setFullScreenImage(null)}
+                        style={{
+                            position: 'absolute', top: 50, right: 20, zIndex: 10,
+                            backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, padding: 8
+                        }}
+                    >
+                        <Ionicons name="close" size={28} color="white" />
+                    </TouchableOpacity>
+
+                    <TouchableWithoutFeedback onPress={() => setFullScreenImage(null)}>
+                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+                    </TouchableWithoutFeedback>
+
+                    {fullScreenImage && (
+                        <Image
+                            source={{ uri: fullScreenImage }}
+                            style={{ width: '100%', height: '80%' }}
+                            resizeMode="contain"
+                        />
+                    )}
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }
