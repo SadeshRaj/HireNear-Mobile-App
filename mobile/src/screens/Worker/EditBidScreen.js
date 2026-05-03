@@ -18,7 +18,8 @@ export default function EditBidScreen({ navigation, route }) {
 
     const [price, setPrice] = useState(String(bid?.price || ''));
     const [message, setMessage] = useState(bid?.message || '');
-    const [estimatedTime, setEstimatedTime] = useState(bid?.estimatedTime || '');
+    const [estValue, setEstValue] = useState(bid?.estimatedTime ? bid.estimatedTime.split(' ')[0] : '');
+    const [estUnit, setEstUnit] = useState(bid?.estimatedTime?.includes('days') ? 'days' : 'hours');
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -46,13 +47,19 @@ export default function EditBidScreen({ navigation, route }) {
             setError('Please enter a valid price.');
             return;
         }
+        // Stricter validation
+        const numericEst = parseFloat(estValue);
+        if (!estValue || isNaN(numericEst) || numericEst <= 0) {
+            setError('Please enter a valid numeric estimated completion time.');
+            return;
+        }
         setError('');
         setLoading(true);
         try {
             const result = await updateBid(bid._id, {
                 price: Number(price),
                 message,
-                estimatedTime,
+                estimatedTime: `${estValue} ${estUnit}`,
                 files,
             });
             if (result._id) {
@@ -128,17 +135,62 @@ export default function EditBidScreen({ navigation, route }) {
                     {/* Estimated Time */}
                     <View className="mb-5">
                         <Text className="text-xs text-slate-400 font-semibold uppercase tracking-widest ml-1 mb-2">
-                            Estimated Completion Time
+                            Estimated Completion Time *
                         </Text>
-                        <View className="flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100">
-                            <Ionicons name="timer-outline" size={22} color="#94a3b8" />
-                            <TextInput
-                                placeholder="e.g. 2 days"
-                                className="flex-1 ml-3 text-base text-slate-800"
-                                placeholderTextColor="#94a3b8"
-                                value={estimatedTime}
-                                onChangeText={setEstimatedTime}
-                            />
+                        <View className="flex-row items-center gap-3">
+                            {/* Value Input */}
+                            <View className="flex-1 flex-row items-center bg-white rounded-3xl px-5 py-4 shadow-sm border border-gray-100">
+                                <Ionicons name="timer-outline" size={22} color="#94a3b8" />
+                                <TextInput
+                                    placeholder="e.g. 3"
+                                    className="flex-1 ml-3 text-base text-slate-800"
+                                    placeholderTextColor="#94a3b8"
+                                    value={estValue}
+                                    onChangeText={setEstValue}
+                                    keyboardType="decimal-pad"
+                                />
+                            </View>
+
+                            {/* Unit Selector */}
+                            <View className="flex-row bg-slate-100 rounded-3xl p-1 border border-slate-200">
+                                <TouchableOpacity
+                                    onPress={() => setEstUnit('hours')}
+                                    style={{
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 12,
+                                        borderRadius: 999,
+                                        backgroundColor: estUnit === 'hours' ? '#FFFFFF' : 'transparent',
+                                        // Simple shadow for the active tab
+                                        shadowColor: estUnit === 'hours' ? '#000' : 'transparent',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.1,
+                                        shadowRadius: 2,
+                                        elevation: estUnit === 'hours' ? 2 : 0,
+                                    }}
+                                >
+                                    <Text className={`text-xs font-bold ${estUnit === 'hours' ? 'text-slate-900' : 'text-slate-500'}`}>
+                                        Hours
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => setEstUnit('days')}
+                                    style={{
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 12,
+                                        borderRadius: 999,
+                                        backgroundColor: estUnit === 'days' ? '#FFFFFF' : 'transparent',
+                                        shadowColor: estUnit === 'days' ? '#000' : 'transparent',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.1,
+                                        shadowRadius: 2,
+                                        elevation: estUnit === 'days' ? 2 : 0,
+                                    }}
+                                >
+                                    <Text className={`text-xs font-bold ${estUnit === 'days' ? 'text-slate-900' : 'text-slate-500'}`}>
+                                        Days
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
 
