@@ -135,6 +135,27 @@ export default function BookingDetailsScreen({ route, navigation }) {
             </View>
 
             <ScrollView className="p-5" showsVerticalScrollIndicator={false}>
+                {/* Worker Info Card */}
+                {booking.workerId && (
+                    <View className="bg-white p-5 rounded-3xl mb-5 shadow-sm border border-gray-100 flex-row items-center justify-between">
+                        <View className="flex-row items-center">
+                            <View className="w-12 h-12 bg-slate-100 rounded-2xl items-center justify-center mr-3 border border-gray-50">
+                                <Ionicons name="person" size={20} color="#94a3b8" />
+                            </View>
+                            <View>
+                                <Text className="text-slate-500 text-[10px] font-bold uppercase mb-0.5">Assigned Worker</Text>
+                                <Text className="text-slate-900 font-bold text-base">{booking.workerId.name}</Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('WorkerPortfolio', { workerId: booking.workerId._id })}
+                            className="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100"
+                        >
+                            <Text className="text-emerald-700 font-bold text-xs uppercase">Portfolio</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 <View className="bg-white p-6 rounded-3xl mb-5 shadow-sm border border-gray-100">
                     <Text className="font-bold text-slate-800 mb-4">Job Progress</Text>
                     <View className="flex-row justify-between items-center">

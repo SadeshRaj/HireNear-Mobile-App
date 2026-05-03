@@ -8,7 +8,8 @@ const bookingSchema = new mongoose.Schema({
     status: { type: String, default: 'scheduled' },
     price: Number,
     scheduledDate: { type: Date, default: Date.now },
-    attachments: [String]
+    attachments: [String],
+    reviewId: {type: mongoose.Schema.Types.ObjectId, ref: 'Review', default: null}
 }, { timestamps: true }); // This automatically adds createdAt and updatedAt
 
 module.exports = mongoose.model('Booking', bookingSchema);

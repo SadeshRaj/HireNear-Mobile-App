@@ -3,7 +3,7 @@ import {
     View, Text, TextInput, TouchableOpacity, FlatList,
     Image, ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, Platform, Modal, Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -13,13 +13,24 @@ import { API_BASE_URL } from '../../../config';
 
 const { width } = Dimensions.get('window');
 
+const formatImageUrl = (url) => {
+    if (!url) return 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
+    if (url.startsWith('http')) return url;
+    const baseUrl = API_BASE_URL.replace(/\/api$/, '');
+    const normalizedUrl = url.replace(/\\/g, '/');
+    return `${baseUrl}/${normalizedUrl.startsWith('/') ? normalizedUrl.slice(1) : normalizedUrl}`;
+};
+
 export default function WorkerPortfolioScreen({ route, navigation }) {
+    const insets = useSafeAreaInsets();
     // Check if a workerId was passed via navigation
     const workerId = route.params?.workerId;
     const isOwnProfile = !workerId;
 
     const [user, setUser] = useState(null);
     const [items, setItems] = useState([]);
+    const [reviews, setReviews] = useState([]);
+    const [activeTab, setActiveTab] = useState('portfolio');
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
 
@@ -63,13 +74,17 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
             const token = await AsyncStorage.getItem('token');
 
             // 1. Fetch Profile Data
+            let currentUserId = workerId;
             if (workerId) {
                 // Fetch specific worker profile from API
                 const response = await fetch(`${API_BASE_URL}/auth/worker/${workerId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await response.json();
-                if (response.ok) setUser(data);
+                if (response.ok) {
+                    setUser(data);
+                    currentUserId = data._id;
+                }
             } else {
                 // Fetch logged in user from local storage
                 const userJson = await AsyncStorage.getItem('user');
@@ -81,6 +96,7 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
                         status: parsedUser.status || "Available",
                         profileImage: parsedUser.profileImage || "https://api.dicebear.com/7.x/avataaars/svg?seed=Fallback"
                     });
+                    currentUserId = parsedUser._id;
                 }
             }
 
@@ -91,6 +107,25 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
             });
             const data = await response.json();
             if (response.ok) setItems(data);
+
+            // 3. Fetch Reviews
+            if (currentUserId) {
+                const reviewsResponse = await fetch(`${API_BASE_URL}/reviews/worker/${currentUserId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const reviewsData = await reviewsResponse.json();
+                if (reviewsResponse.ok) {
+                    const sortedReviews = (reviewsData.reviews || []).sort((a, b) => {
+                        const getTimestamp = (item) => {
+                            if (item.createdAt) return new Date(item.createdAt).getTime();
+                            if (item._id) return parseInt(item._id.substring(0, 8), 16) * 1000;
+                            return 0;
+                        };
+                        return getTimestamp(b) - getTimestamp(a);
+                    });
+                    setReviews(sortedReviews);
+                }
+            }
 
         } catch (error) {
             console.error(error);
@@ -144,7 +179,7 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
 
     const handleUpload = async () => {
         if (!title || !description) return showToast('Title and description are required', 'error');
-        if (images.length === 0 && !editingItemId) return showToast('Please add at least one image', 'error');
+        if (images.length === 0) return showToast('Please add at least one image', 'error');
 
         setUploading(true);
         try {
@@ -160,9 +195,13 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
             }
 
             images.forEach((img) => {
-                const filename = img.uri.split('/').pop();
-                const match = /\.(\w+)$/.exec(filename);
-                formData.append('images', { uri: img.uri, name: filename, type: match ? `image/${match[1]}` : `image` });
+                if (img.isExisting) {
+                    formData.append('existingImages', img.originalUrl);
+                } else {
+                    const filename = img.uri.split('/').pop();
+                    const match = /\.(\w+)$/.exec(filename);
+                    formData.append('images', { uri: img.uri, name: filename, type: match ? `image/${match[1]}` : `image` });
+                }
             });
 
             const url = editingItemId ? `${API_BASE_URL}/portfolio/${editingItemId}` : `${API_BASE_URL}/portfolio`;
@@ -248,6 +287,55 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
         );
     };
 
+    const renderReviewItem = ({ item }) => {
+        let dateString = 'Recent';
+        if (item.createdAt) {
+            dateString = new Date(item.createdAt).toLocaleDateString();
+        } else if (item._id) {
+            const timestamp = parseInt(item._id.substring(0, 8), 16) * 1000;
+            if (!isNaN(timestamp)) {
+                dateString = new Date(timestamp).toLocaleDateString();
+            }
+        }
+
+        return (
+            <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', marginHorizontal: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Image 
+                            source={{ uri: formatImageUrl(item.clientId?.profileImage) }} 
+                            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f1f5f9' }} 
+                        />
+                        <View style={{ marginLeft: 12 }}>
+                            <Text style={{ fontWeight: '700', color: '#0f172a', fontSize: 15 }}>
+                                {item.clientId?.name || 'Unknown User'}
+                            </Text>
+                            <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                                {dateString}
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                        <Ionicons name="star" size={14} color="#f59e0b" />
+                        <Text style={{ marginLeft: 4, fontWeight: '700', color: '#b45309', fontSize: 13 }}>{item.rating}</Text>
+                    </View>
+                </View>
+                
+                <Text style={{ color: '#475569', fontSize: 14, lineHeight: 22 }}>{item.comment}</Text>
+                
+                {item.images && item.images.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                        {item.images.map((img, index) => (
+                            <TouchableOpacity key={index} onPress={() => { setSelectedItem({ ...item, images: item.images.map(formatImageUrl), title: 'Review Images' }); setActiveImageIndex(index); }}>
+                                <Image source={{ uri: formatImageUrl(img) }} style={{ width: 80, height: 80, borderRadius: 12, marginRight: 8 }} />
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
+            </View>
+        );
+    };
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FB' }}>
             {toast.visible && (
@@ -284,7 +372,15 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
                                 <Text style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Upload</Text>
                             </TouchableOpacity>
                             {images.map((img, index) => (
-                                <Image key={index} source={{ uri: img.uri }} style={{ width: 100, height: 100, borderRadius: 16, marginRight: 12 }} />
+                                <View key={index} style={{ position: 'relative', marginRight: 12 }}>
+                                    <Image source={{ uri: img.uri }} style={{ width: 100, height: 100, borderRadius: 16 }} />
+                                    <TouchableOpacity 
+                                        onPress={() => setImages(images.filter((_, i) => i !== index))}
+                                        style={{ position: 'absolute', top: -8, right: -8, backgroundColor: '#ef4444', borderRadius: 12, padding: 4 }}
+                                    >
+                                        <Ionicons name="close" size={16} color="white" />
+                                    </TouchableOpacity>
+                                </View>
                             ))}
                         </ScrollView>
 
@@ -307,39 +403,59 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
                     </View>
 
                     <FlatList
-                        data={items}
+                        data={activeTab === 'portfolio' ? items : reviews}
                         keyExtractor={item => item._id}
-                        numColumns={2}
-                        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 100 }}
+                        numColumns={activeTab === 'portfolio' ? 2 : 1}
+                        key={activeTab}
+                        contentContainerStyle={{ paddingHorizontal: activeTab === 'portfolio' ? 14 : 0, paddingBottom: 100 }}
                         showsVerticalScrollIndicator={false}
                         ListHeaderComponent={
-                            <View style={{ alignItems: 'center', paddingBottom: 30, borderBottomWidth: 1, borderColor: '#e2e8f0', marginBottom: 20, marginHorizontal: 6 }}>
-                                <View style={{ position: 'relative' }}>
-                                    <Image source={{ uri: user?.profileImage }} style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: 'white', backgroundColor: '#f1f5f9' }} />
-                                    <View style={{ position: 'absolute', bottom: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: getStatusColor(user?.status), borderWidth: 3, borderColor: 'white' }} />
+                            <View style={{ alignItems: 'center', paddingBottom: 0, borderBottomWidth: 1, borderColor: '#e2e8f0', marginBottom: 20 }}>
+                                <View style={{ alignItems: 'center', marginHorizontal: 6 }}>
+                                    <View style={{ position: 'relative' }}>
+                                        <Image source={{ uri: user?.profileImage }} style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: 'white', backgroundColor: '#f1f5f9' }} />
+                                        <View style={{ position: 'absolute', bottom: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: getStatusColor(user?.status), borderWidth: 3, borderColor: 'white' }} />
+                                    </View>
+
+                                    <Text style={{ fontSize: 24, fontWeight: '800', color: '#0f172a', marginTop: 12 }}>{user?.name}</Text>
+
+                                    <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: getStatusColor(user?.status) }}>{user?.status}</Text>
+                                    </View>
+
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+                                        <Text style={{ color: '#475569', fontSize: 14, textAlign: 'center', fontStyle: 'italic' }}>"{user?.bio}"</Text>
+                                        {isOwnProfile && (
+                                            <TouchableOpacity onPress={() => { setEditBio(user?.bio); setEditStatus(user?.status); setProfileModalVisible(true); }} style={{ marginLeft: 8 }}>
+                                                <Ionicons name="pencil" size={20} color="#64748b" style={{ padding: 4, backgroundColor: '#f1f5f9', borderRadius: 12 }} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
                                 </View>
-
-                                <Text style={{ fontSize: 24, fontWeight: '800', color: '#0f172a', marginTop: 12 }}>{user?.name}</Text>
-
-                                <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: getStatusColor(user?.status) }}>{user?.status}</Text>
-                                </View>
-
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
-                                    <Text style={{ color: '#475569', fontSize: 14, textAlign: 'center', fontStyle: 'italic' }}>"{user?.bio}"</Text>
-                                    {isOwnProfile && (
-                                        <TouchableOpacity onPress={() => { setEditBio(user?.bio); setEditStatus(user?.status); setProfileModalVisible(true); }} style={{ marginLeft: 8 }}>
-                                            <Ionicons name="pencil" size={20} color="#64748b" style={{ padding: 4, backgroundColor: '#f1f5f9', borderRadius: 12 }} />
-                                        </TouchableOpacity>
-                                    )}
+                                
+                                <View style={{ flexDirection: 'row', marginTop: 24, width: '100%' }}>
+                                    <TouchableOpacity 
+                                        style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'portfolio' ? '#0f172a' : 'transparent' }}
+                                        onPress={() => setActiveTab('portfolio')}
+                                    >
+                                        <Text style={{ fontSize: 15, fontWeight: '700', color: activeTab === 'portfolio' ? '#0f172a' : '#94a3b8' }}>Projects</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'reviews' ? '#0f172a' : 'transparent' }}
+                                        onPress={() => setActiveTab('reviews')}
+                                    >
+                                        <Text style={{ fontSize: 15, fontWeight: '700', color: activeTab === 'reviews' ? '#0f172a' : '#94a3b8' }}>Reviews</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         }
-                        renderItem={renderGridItem}
-                        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 40, color: '#94a3b8' }}>No portfolio projects yet.</Text>}
+                        renderItem={activeTab === 'portfolio' ? renderGridItem : renderReviewItem}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 40, color: '#94a3b8' }}>
+                            {activeTab === 'portfolio' ? 'No portfolio projects yet.' : 'No reviews yet.'}
+                        </Text>}
                     />
 
-                    {isOwnProfile && (
+                    {isOwnProfile && activeTab === 'portfolio' && (
                         <TouchableOpacity
                             style={{ position: 'absolute', bottom: 30, right: 20, backgroundColor: '#0f172a', width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 }}
                             onPress={openAddForm}
@@ -353,31 +469,45 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
             {/* Lightbox / Image Viewer */}
             <Modal visible={!!selectedItem} transparent animationType="fade">
                 <View style={{ flex: 1, backgroundColor: 'black' }}>
-                    <SafeAreaView>
+                    <View style={{ paddingTop: insets.top > 0 ? insets.top : 40, zIndex: 10, position: 'absolute', width: '100%' }} pointerEvents="box-none">
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10 }}>
                             <TouchableOpacity onPress={() => setSelectedItem(null)} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}>
                                 <Ionicons name="close" size={24} color="white" />
                             </TouchableOpacity>
-                            {isOwnProfile && (
-                                <TouchableOpacity onPress={() => {
-                                    const idToDelete = selectedItem._id;
-                                    setSelectedItem(null);
-                                    Alert.alert("Delete", "Remove this project?", [
-                                        { text: "Cancel", style: "cancel" },
-                                        { text: "Delete", style: "destructive", onPress: async () => {
-                                                const token = await AsyncStorage.getItem('token');
-                                                await fetch(`${API_BASE_URL}/portfolio/${idToDelete}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-                                                setItems(items.filter(i => i._id !== idToDelete));
-                                            }}
-                                    ]);
-                                }} style={{ padding: 8 }}>
-                                    <Ionicons name="trash-outline" size={24} color="#ef4444" />
-                                </TouchableOpacity>
+                            {isOwnProfile && activeTab === 'portfolio' && (
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <TouchableOpacity onPress={() => {
+                                        setEditingItemId(selectedItem._id);
+                                        setTitle(selectedItem.title || '');
+                                        setDescription(selectedItem.description || '');
+                                        setFinalAddress(selectedItem.location?.address || '');
+                                        setFinalCoords(selectedItem.location?.lat ? { latitude: selectedItem.location.lat, longitude: selectedItem.location.lng } : null);
+                                        setImages(selectedItem.images ? selectedItem.images.map(img => ({ uri: formatImageUrl(img), originalUrl: img, isExisting: true })) : []);
+                                        setSelectedItem(null);
+                                        setIsFormVisible(true);
+                                    }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}>
+                                        <Ionicons name="pencil" size={20} color="white" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => {
+                                        const idToDelete = selectedItem._id;
+                                        setSelectedItem(null);
+                                        Alert.alert("Delete", "Remove this project?", [
+                                            { text: "Cancel", style: "cancel" },
+                                            { text: "Delete", style: "destructive", onPress: async () => {
+                                                    const token = await AsyncStorage.getItem('token');
+                                                    await fetch(`${API_BASE_URL}/portfolio/${idToDelete}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+                                                    setItems(items.filter(i => i._id !== idToDelete));
+                                                }}
+                                        ]);
+                                    }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}>
+                                        <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                                    </TouchableOpacity>
+                                </View>
                             )}
                         </View>
-                    </SafeAreaView>
+                    </View>
 
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <View style={{ flex: 1, justifyContent: 'center', zIndex: 1 }}>
                         {selectedItem?.images && (
                             <ScrollView
                                 horizontal

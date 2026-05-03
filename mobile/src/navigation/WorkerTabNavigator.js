@@ -6,9 +6,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import WorkerDashboardScreen from '../screens/Worker/WorkerDashboardScreen';
 import MyBidsScreen from '../screens/Worker/MyBidsScreen';
-// NEW SCREENS
 import WorkerActiveJobsScreen from '../screens/Worker/WorkerActiveJobsScreen';
 import EarningsScreen from '../screens/Worker/EarningsScreen';
+import WorkerchatlistScreen from '../screens/Worker/WorkerchatlistScreen'; // ✅ new
 
 const Tab = createBottomTabNavigator();
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -17,7 +17,6 @@ export default function WorkerTabNavigator({ route }) {
     const { user } = route?.params || {};
     const [activeJobsCount, setActiveJobsCount] = useState(0);
 
-    // Fetch active bookings continuously to keep the badge updated
     useFocusEffect(
         useCallback(() => {
             const fetchActiveBookings = async () => {
@@ -29,7 +28,6 @@ export default function WorkerTabNavigator({ route }) {
                     const data = await res.json();
 
                     if (data.success && Array.isArray(data.bookings)) {
-                        // Count jobs that the worker needs to act on (scheduled or in-progress)
                         const active = data.bookings.filter(b => b.status === 'scheduled' || b.status === 'in-progress');
                         setActiveJobsCount(active.length);
                     }
@@ -50,6 +48,7 @@ export default function WorkerTabNavigator({ route }) {
                         'Browse Jobs': focused ? 'search' : 'search-outline',
                         'My Bids': focused ? 'document-text' : 'document-text-outline',
                         'Active Jobs': focused ? 'hammer' : 'hammer-outline',
+                        'Messages': focused ? 'chatbubbles' : 'chatbubbles-outline',
                         'Earnings': focused ? 'wallet' : 'wallet-outline',
                     };
                     return <Ionicons name={icons[route.name]} size={size} color={color} />;
@@ -63,7 +62,6 @@ export default function WorkerTabNavigator({ route }) {
                     borderTopColor: '#f1f5f9',
                 },
                 tabBarLabelStyle: {
-                    // Slightly smaller font so 4 tabs fit nicely
                     fontSize: 10,
                     fontWeight: '600',
                 },
@@ -82,10 +80,13 @@ export default function WorkerTabNavigator({ route }) {
                 name="Active Jobs"
                 component={WorkerActiveJobsScreen}
                 options={{
-                    // Notification badge logic
                     tabBarBadge: activeJobsCount > 0 ? activeJobsCount : null,
                     tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white' }
                 }}
+            />
+            <Tab.Screen
+                name="Messages"
+                component={WorkerchatlistScreen}
             />
             <Tab.Screen
                 name="Earnings"

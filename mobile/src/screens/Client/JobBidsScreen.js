@@ -131,6 +131,13 @@ export default function JobBidsScreen({ route, navigation }) {
         fetchBids();
     }, []);
 
+    useEffect(() => {
+        if (route.params?.refresh) {
+            fetchBids();
+            navigation.setParams({ refresh: undefined });
+        }
+    }, [route.params?.refresh]);
+
     const onRefresh = () => {
         setRefreshing(true);
         fetchBids();
@@ -214,7 +221,7 @@ export default function JobBidsScreen({ route, navigation }) {
                                     item={item} 
                                     onAction={handleAction}
                                     onNavigatePortfolio={(workerId) => navigation.navigate('WorkerPortfolio', { workerId })} 
-                                    onNavigateDetail={(bid) => navigation.navigate('BidDetail', { bid, refreshBids: fetchBids })}
+                                    onNavigateDetail={(bid) => navigation.navigate('BidDetail', { bid })}
                                 />
                             ))
                         ) : (

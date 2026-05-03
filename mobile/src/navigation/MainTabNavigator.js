@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Import your screens (we use ../screens because this file is inside the navigation folder)
 import DashboardScreen from '../screens/Client/DashboardScreen';
 import MyJobPostsScreen from '../screens/Client/MyJobPostsScreen';
+import ChatListScreen from '../screens/Client/ChatListScreen'; // Create this file next
 
 const Tab = createBottomTabNavigator();
 
@@ -36,6 +37,22 @@ export default function MainTabNavigator({ route }) {
                 component={MyJobPostsScreen}
                 initialParams={{ user, userId: user?._id || user?.id }}
             />
+
+            <Tab.Screen
+                name="Messages"
+                component={ChatListScreen}
+                initialParams={{ user }} // Pass user so we have the userId
+                options={{
+                    tabBarIcon: ({ focused, color, size }) => (
+                        <Ionicons
+                            name={focused ? "chatbubbles" : "chatbubbles-outline"}
+                            size={size}
+                            color={color}
+                        />
+                    ),
+                }}
+            />
+
         </Tab.Navigator>
     );
 }

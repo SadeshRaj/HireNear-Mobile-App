@@ -32,12 +32,20 @@ exports.createPortfolioItem = async (req, res) => {
             imageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
         }
 
+        let locationObj = undefined;
+        if (address || lat || lng) {
+            locationObj = {};
+            if (address) locationObj.address = address;
+            if (lat && !isNaN(lat)) locationObj.lat = Number(lat);
+            if (lng && !isNaN(lng)) locationObj.lng = Number(lng);
+        }
+
         const newItem = new PortfolioItem({
             workerId: req.user.id,
             title,
             description,
             images: imageUrls,
-            location: { address, lat: Number(lat), lng: Number(lng) }
+            location: locationObj
         });
 
         await newItem.save();
@@ -67,10 +75,22 @@ exports.updatePortfolioItem = async (req, res) => {
         if (!item) return res.status(404).json({ msg: 'Item not found' });
         if (item.workerId.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
 
-        if (req.files && req.files.length > 0) {
-            const newImageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
-            item.images = newImageUrls;
+        let existingImages = [];
+        if (req.body.existingImages) {
+            existingImages = Array.isArray(req.body.existingImages) ? req.body.existingImages : [req.body.existingImages];
         }
+
+        let newImageUrls = [];
+        if (req.files && req.files.length > 0) {
+            newImageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+        }
+
+        // Always update images to the combination of retained existing images and new ones
+        const finalImages = [...existingImages, ...newImageUrls];
+        if (finalImages.length === 0) {
+            return res.status(400).json({ msg: 'At least one image is required' });
+        }
+        item.images = finalImages;
 
         item.title = title || item.title;
         item.description = description || item.description;

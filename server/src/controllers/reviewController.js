@@ -1,50 +1,88 @@
 const Review = require('../models/Review');
 const JobPost = require('../models/JobPost');
-const Booking =require('../models/Booking');
+const Booking = require('../models/Booking');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Helper function to upload buffer to Cloudinary
+const uploadToCloudinary = (fileBuffer) => {
+    return new Promise((resolve, reject) => {
+        let stream = cloudinary.uploader.upload_stream(
+            { folder: 'review_images' },
+            (error, result) => {
+                if (result) resolve(result.secure_url);
+                else reject(error);
+            }
+        );
+        streamifier.createReadStream(fileBuffer).pipe(stream);
+    });
+};
 
 // 1. CREATE REVIEW
 exports.createReview = async (req, res) => {
     try {
-        const { bookingId, clientId, workerId, rating, comment } = req.body;
-
-        const images = req.files ? req.files.map(file => file.path) : (req.body.images || []);
-
-        if (!bookingId || !clientId || !workerId || !rating || !comment) {
-            return res.status(400).json({ msg: 'Please provide all required fields' });
+        const { rating, comment, bookingId, clientId, workerId } = req.body;
+        
+        let imageUrls = [];
+        if (req.files && req.files.length > 0) {
+            imageUrls = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
         }
 
+        // 1. Save the new review
         const newReview = new Review({
+            rating,
+            comment,
             bookingId,
             clientId,
             workerId,
-            rating,
-            comment,
-            images
+            images: imageUrls
         });
 
         await newReview.save();
 
-        const booking = await Booking.findById(req.body.bookingId);
+        // 2. LINKING LOGIC: Use unique variable names (reviewBooking)
+        try {
+            // Changed 'booking' to 'reviewBooking' to avoid the "already declared" error
+            const reviewBooking = await Booking.findById(bookingId);
 
-        if (booking) {
-            booking.reviewId = newReview._id;
-            await booking.save();
+            if (reviewBooking) {
+                // Attach reviewId to the Booking
+                reviewBooking.reviewId = newReview._id;
+                await reviewBooking.save();
 
-            const jobId = booking.jobId || booking.job;
-            if (jobId) {
-                await JobPost.findByIdAndUpdate(jobId, { reviewId: newReview._id })
+                // Get the Job ID from the booking record
+                const targetJobId = reviewBooking.jobId || reviewBooking.job;
+
+                if (targetJobId) {
+                    // Update the JobPost so the UI knows it's reviewed
+                    await JobPost.findByIdAndUpdate(targetJobId, { reviewId: newReview._id });
+                    console.log("✅ Review linked successfully to Job:", targetJobId);
+                }
             }
+        } catch (linkError) {
+            console.error("Linking Warning:", linkError);
         }
 
+        // 3. SUCCESS RESPONSE
         res.status(201).json({
             success: true,
             msg: 'Review submitted successfully',
             review: newReview
         });
 
-    } catch(err) {
-        console.error("Create Review Error: ", err.message);
-        res.status(500).json({ error: 'Server error while creating review' });
+    } catch (error) {
+        console.error("Create Review Error:", error);
+        res.status(500).json({
+            success: false,
+            msg: 'Server error during review submission'
+        });
     }
 };
 
@@ -52,7 +90,9 @@ exports.createReview = async (req, res) => {
 exports.getWorkerReviews = async (req, res) => {
     try {
         const { workerId } = req.params;
-        const reviews = await Review.find({ workerId }).sort({ createdAt: -1 });
+        const reviews = await Review.find({ workerId })
+            .populate('clientId', 'name profileImage')
+            .sort({ createdAt: -1 });
 
         // FIXED: Status 260 changed to 200 (OK)
         res.status(200).json({ reviews });
@@ -104,8 +144,11 @@ exports.updateReview = async (req, res) => {
             return res.status(404).json({ msg: 'Review not found' });
         }
 
-        // Handle new images if Multer is used
-        const newImages = req.files ? req.files.map(file => file.path) : [];
+        // Handle new images with Cloudinary
+        let newImages = [];
+        if (req.files && req.files.length > 0) {
+            newImages = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer)));
+        }
         const updatedImages = [...review.images, ...newImages];
 
         // Update the fields

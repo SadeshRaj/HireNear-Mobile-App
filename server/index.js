@@ -63,6 +63,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/uploads', express.static('uploads'));
 
 // --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
