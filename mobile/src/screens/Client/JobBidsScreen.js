@@ -38,7 +38,15 @@ const BidItem = ({ item, onAction, onNavigatePortfolio, onNavigateDetail }) => (
                 </View>
 
                 <View className="ml-3 flex-1">
-                    <Text className="text-lg font-bold text-slate-900">{item.workerId?.name}</Text>
+                    <View className="flex-row items-center">
+                        <Text className="text-lg font-bold text-slate-900">{item.workerId?.name}</Text>
+                        {item.workerId?.rating !== undefined && (
+                            <View className="flex-row items-center ml-2 bg-amber-50 px-2 py-0.5 rounded-full">
+                                <Ionicons name="star" size={10} color="#f59e0b" />
+                                <Text className="text-amber-700 text-[10px] font-black ml-1">{item.workerId.rating.toFixed(1)}</Text>
+                            </View>
+                        )}
+                    </View>
 
                     <View className="flex-row items-center mt-0.5">
                         <Text className="text-emerald-600 text-[10px] font-bold uppercase">View Details</Text>
@@ -182,10 +190,20 @@ export default function JobBidsScreen({ route, navigation }) {
 
     const sortedBids = React.useMemo(() => {
         return (bids || []).slice().sort((a, b) => {
+            // 1. Distance (closer first)
             const distA = (a.distance !== null && a.distance !== undefined && !isNaN(a.distance)) ? Number(a.distance) : Infinity;
             const distB = (b.distance !== null && b.distance !== undefined && !isNaN(b.distance)) ? Number(b.distance) : Infinity;
-            if (distA === distB) return 0;
-            return distA - distB;
+            if (distA !== distB) return distA - distB;
+
+            // 2. Rating (higher first)
+            const ratingA = a.workerId?.rating ?? 0;
+            const ratingB = b.workerId?.rating ?? 0;
+            if (ratingA !== ratingB) return ratingB - ratingA;
+
+            // 3. Price (lower first)
+            const priceA = a.price ?? Infinity;
+            const priceB = b.price ?? Infinity;
+            return priceA - priceB;
         });
     }, [bids]);
 

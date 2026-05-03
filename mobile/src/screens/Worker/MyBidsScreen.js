@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import BidCard from '../../components/BidCard';
 import { getMyBids, withdrawBid } from '../../services/bidService';
 
@@ -38,10 +39,11 @@ export default function MyBidsScreen({ navigation }) {
         }
     }, [activeFilter]);
 
-    useEffect(() => {
-        setLoading(true);
-        fetchBids();
-    }, [fetchBids]);
+    useFocusEffect(
+        useCallback(() => {
+            fetchBids();
+        }, [fetchBids])
+    );
 
     const onRefresh = () => {
         setRefreshing(true);
