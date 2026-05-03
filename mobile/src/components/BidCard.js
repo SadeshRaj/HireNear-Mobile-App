@@ -26,7 +26,15 @@ export default function BidCard({ bid, mode = 'client', onAccept, onReject, onEd
                 <View className="flex-1 mr-3">
                     {mode === 'client' ? (
                         <>
-                            <Text className="text-base font-bold text-slate-900">{worker.name || 'Worker'}</Text>
+                            <View className="flex-row items-center">
+                                <Text className="text-base font-bold text-slate-900">{worker.name || 'Worker'}</Text>
+                                {worker.rating !== undefined && (
+                                    <View className="flex-row items-center ml-2 bg-amber-50 px-2 py-0.5 rounded-full">
+                                        <Ionicons name="star" size={10} color="#f59e0b" />
+                                        <Text className="text-amber-700 text-[10px] font-black ml-1">{worker.rating.toFixed(1)}</Text>
+                                    </View>
+                                )}
+                            </View>
                             {worker.skills && worker.skills.length > 0 && (
                                 <Text className="text-slate-400 text-xs font-medium mt-0.5">
                                     {worker.skills.slice(0, 2).join(' · ')}

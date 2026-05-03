@@ -55,16 +55,18 @@ export default function BidDetailScreen({ route, navigation }) {
 
     const renderAttachment = (url, index) => {
         const isImage = url.match(/\.(jpeg|jpg|gif|png)$/i);
+        // Ensure we have a full URL (handle local paths from server)
+        const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}/${url.replace(/\\/g, '/')}`;
         
         return (
             <TouchableOpacity 
                 key={index} 
-                onPress={() => Linking.openURL(url)}
+                onPress={() => Linking.openURL(fullUrl)}
                 className="bg-white rounded-3xl p-2 mb-4 shadow-sm border border-gray-100"
             >
                 {isImage ? (
                     <Image 
-                        source={{ uri: url }} 
+                        source={{ uri: fullUrl }} 
                         style={{ width: '100%', height: 200, borderRadius: 20 }}
                         resizeMode="cover"
                     />

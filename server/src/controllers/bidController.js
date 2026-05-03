@@ -41,6 +41,8 @@ exports.submitBid = async (req, res) => {
             return res.status(400).json({ msg: 'You already have an active bid on this job' });
         }
 
+        console.log(`📩 New Bid Request: JobID=${jobId}, WorkerLat=${req.body.workerLat}, WorkerLng=${req.body.workerLng}, JobCoords=${jobCoordinates}`);
+
         // Calculate distance if both job coords and worker's live GPS are available
         let distance = null;
         try {
@@ -101,13 +103,18 @@ exports.getBidsForJob = async (req, res) => {
         const bids = await Bid.find({
             jobId: req.params.jobId,
             status: { $ne: 'withdrawn' }
-        }).populate('workerId', 'name email phone skills bio location');
+        }).populate('workerId', 'name email phone skills bio location rating');
 
-        // Sort: nearby first, then by price ascending
+        // Sort: nearby first, then by rating descending, then by price ascending
         const sorted = bids.sort((a, b) => {
             const distA = a.distance ?? Infinity;
             const distB = b.distance ?? Infinity;
             if (distA !== distB) return distA - distB;
+
+            const ratingA = a.workerId?.rating ?? 0;
+            const ratingB = b.workerId?.rating ?? 0;
+            if (ratingA !== ratingB) return ratingB - ratingA;
+
             return a.price - b.price;
         });
 
@@ -135,6 +142,8 @@ exports.getMyBids = async (req, res) => {
         const bids = await Bid.find(filter)
             .populate('jobId', 'title description budget deadline status')
             .sort({ createdAt: -1 });
+
+        console.log(`🔍 Fetching Bids for Worker: ${req.user._id}, Found: ${bids.length}`);
 
         res.json(bids);
     } catch (err) {

@@ -63,11 +63,18 @@ export default function SubmitBidScreen({ navigation, route }) {
             try {
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
-                    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    const pos = await Location.getCurrentPositionAsync({ 
+                        accuracy: Location.Accuracy.High 
+                    });
                     workerLat = pos.coords.latitude;
                     workerLng = pos.coords.longitude;
+                    console.log("📍 Captured Worker Location:", workerLat, workerLng);
+                } else {
+                    console.warn("⚠️ Location permission denied");
                 }
-            } catch { /* GPS optional — distance will be null */ }
+            } catch (error) { 
+                console.error("❌ GPS Error:", error.message);
+            }
 
             const result = await submitBid({
                 jobId: job._id,
