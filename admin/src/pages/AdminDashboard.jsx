@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Briefcase, FileText,
-    LogOut, Search, Bell, TrendingUp, Image as ImageIcon, MessageCircle
+    LogOut, Search, Bell, TrendingUp, Image as ImageIcon, MessageCircle, Star
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../utils/config';
@@ -14,6 +14,7 @@ import BidsTab from '../components/BidsTab';
 import TransactionsTab from '../components/TransactionsTab';
 import PortfoliosTab from '../components/PortfoliosTab';
 import SupportTab from '../components/SupportTab';
+import ReviewsTab from '../components/ReviewsTab';
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
@@ -98,6 +99,7 @@ export default function AdminDashboard() {
             case 'bids': return <BidsTab />;
             case 'portfolios': return <PortfoliosTab />;
             case 'transactions': return <TransactionsTab />;
+            case 'reviews': return <ReviewsTab />;
             case 'support': return <SupportTab />;
             default: return <OverviewTab />;
         }
@@ -121,6 +123,7 @@ export default function AdminDashboard() {
                     <NavItem icon={<FileText />} label="Placed Bids" active={activeTab === 'bids'} onClick={() => setActiveTab('bids')} />
                     <NavItem icon={<ImageIcon />} label="Worker Portfolios" active={activeTab === 'portfolios'} onClick={() => setActiveTab('portfolios')} />
                     <NavItem icon={<TrendingUp />} label="Transactions" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
+                    <NavItem icon={<Star />} label="Reviews" active={activeTab === 'reviews'} onClick={() => setActiveTab('reviews')} />
 
                     <NavItem
                         icon={<MessageCircle />}
