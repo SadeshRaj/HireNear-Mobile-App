@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="mobile/assets/HireNear_Logo.png" alt="HireNear Logo" width="120" />
+<img width="1149" height="201" alt="Screenshot 2026-05-07 at 01 07 39" src="https://github.com/user-attachments/assets/0f9deeac-923e-48ad-947c-fd080dbfc43b" />
 
 # HireNear
 
