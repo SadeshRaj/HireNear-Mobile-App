@@ -16,6 +16,35 @@
 </div>
 
 ---
+## 📸 Mobile App Screens
+<img width="1270" height="598" alt="Screenshot 2026-05-07 at 00 24 29" src="https://github.com/user-attachments/assets/898770ad-991e-4aba-b1bb-9f61063f8a4b" />
+
+---
+
+<img width="1270" height="598" alt="Screenshot 2026-05-07 at 00 24 49" src="https://github.com/user-attachments/assets/efb081fe-42a6-4c9c-8b85-594cecf068f3" />
+
+---
+
+<img width="1270" height="598" alt="Screenshot 2026-05-07 at 00 31 05" src="https://github.com/user-attachments/assets/f1fbb15d-c229-4186-8e69-501ce1639fee" />
+
+---
+
+<img width="1270" height="598" alt="Screenshot 2026-05-07 at 00 31 28" src="https://github.com/user-attachments/assets/2a2b980d-1111-48c8-af96-f7ffc2f34e92" />
+
+---
+
+<img width="1270" height="598" alt="Screenshot 2026-05-07 at 00 31 46" src="https://github.com/user-attachments/assets/ceac32dc-6d99-481d-af12-c6413090debe" />
+
+---
+
+## 📸 Admin Dashboard(Web)
+
+<img width="1402" height="293" alt="Screenshot 2026-05-07 at 00 35 01" src="https://github.com/user-attachments/assets/6869a6ae-ca07-41f6-8418-5570247745a9" />
+
+---
+
+<img width="1402" height="293" alt="Screenshot 2026-05-07 at 00 35 32" src="https://github.com/user-attachments/assets/9bdf43be-754c-4156-83e8-2e4d7fe7e267" />
+
 
 ## 📖 Overview
 
@@ -26,7 +55,7 @@
 ## ✨ Key Features
 
 ### 👤 Authentication & Security
-- **OTP-Verified Registration** — New users receive a 4-digit OTP via SMS (powered by [Text.lk](https://app.text.lk)) before their account is activated
+- **OTP-Verified Registration** — New users receive a 4-digit OTP via SMS (powered by [Text.lk]) before their account is activated
 - **Forgot / Reset Password** — Full OTP-based password recovery flow via SMS
 - **JWT Authentication** — Stateless, token-based auth with 7-day expiry; tokens stored securely via `AsyncStorage`
 - **Remember Me** — Optional persistent login across app restarts
@@ -70,77 +99,6 @@
 | **Transactions** | Monitor all invoices and payment statuses |
 | **Reviews** | Read all client reviews, view attached proof images, delete inappropriate reviews |
 | **Support Chat** | Real-time support chat with any user; unread badge count in sidebar; auto-reply on first message |
-
----
-
-## 🏛️ Architecture
-
-```
-HireNear-Mobile-App/
-│
-├── mobile/          # Expo (React Native) — iOS & Android App
-│   ├── src/
-│   │   ├── screens/
-│   │   │   ├── Client/      # 13 client-facing screens
-│   │   │   └── Worker/      # 13 worker-facing screens
-│   │   ├── navigation/      # Stack + Bottom Tab navigators
-│   │   ├── services/        # API service helpers
-│   │   ├── components/      # Reusable UI components
-│   │   └── utils/           # Utility functions
-│   ├── assets/              # App icon, splash screen
-│   └── app.json             # Expo config (bundle ID, permissions, etc.)
-│
-├── server/          # Node.js + Express REST API
-│   ├── index.js             # App entry point; HTTP server + Socket.io
-│   └── src/
-│       ├── models/          # 9 Mongoose schemas
-│       ├── controllers/     # 9 controller modules
-│       ├── routes/          # 10 route files
-│       ├── middleware/      # JWT auth + admin guard
-│       ├── config/          # DB connection + Socket handler
-│       └── utils/           # Shared helpers
-│
-└── admin/           # Vite + React — Web Admin Dashboard
-    └── src/
-        ├── pages/           # AdminLogin, AdminDashboard
-        ├── components/      # 10 tab/modal components
-        ├── context/         # Auth context
-        ├── services/        # API service layer
-        └── utils/           # Config, helpers
-```
-
----
-
-## 🗄️ Data Models
-
-```
-User           — Clients, Workers & Admins (role-based, geo-indexed, OTP, account status)
-JobPost        — Client job listings (geo-indexed, category, budget, images, status)
-Bid            — Worker bids per job (price, message, estimated time, distance, attachments)
-Booking        — Created on bid acceptance (links Job ↔ Bid ↔ Client ↔ Worker)
-Invoice        — Worker-generated (itemised, payment slip URL, status: pending/verifying/paid/rejected)
-PortfolioItem  — Worker past work (title, description, images, location)
-Review         — Post-job ratings (star rating, comment, proof images)
-Message        — Direct in-app chat messages between Client ↔ Worker
-SupportMessage — Admin ↔ User live support chat (with auto-reply on first contact)
-```
-
----
-
-## 🌐 API Endpoints
-
-| Prefix | Module | Notes |
-|---|---|---|
-| `/api/auth` | Authentication | Register, OTP verify, login, forgot/reset password, profile update |
-| `/api/jobs` | Jobs | CRUD, nearby geo search, status management |
-| `/api/bids` | Bids | Submit, edit, withdraw, accept, reject |
-| `/api/bookings` | Bookings | Create, fetch by worker/client, status update |
-| `/api/invoices` | Invoices | Create, view, upload payment slip, reject payment slip |
-| `/api/portfolio` | Portfolios | Worker portfolio CRUD with Cloudinary image uploads |
-| `/api/reviews` | Reviews | Submit, view, worker review history |
-| `/api/messages` | Messages | Direct chat message history |
-| `/api/support` | Support Chat | User–Admin support messages, unread counts |
-| `/api/admin` | Admin | Full platform data access, user management, dashboard overview |
 
 ---
 
@@ -386,10 +344,14 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ---
 
-<div align="center">
+## 👥 Meet the Team
 
-Built with ❤️ by **SadeshRaj**
+- <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/> [Poorna Rajapakshe](https://github.com/SadeshRaj) 
+- <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/> [Binuk Pinsara](https://github.com/Binuk32)
+- <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/> [Sujana Dinuwara](https://github.com/IT24103033) 
+- <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/> [Kaveesha Tharindi](https://github.com/kaveeshatharindi333)
+- <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/> [Nethmi Imaya](https://github.com/IT24102333)
+- <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/> [Anuja Gimes](https://github.com/IT24104222)
 
-*HireNear — Hire smart. Hire near.*
+---
 
-</div>
