@@ -208,7 +208,7 @@ export default function CreateJobScreen({ navigation, route }) {
                         <Text className="text-slate-900 font-bold mb-2 ml-1">Job Title</Text>
                         <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
                             <MaterialIcons name="work-outline" size={20} color="#94a3b8" />
-                            <TextInput placeholder="e.g. Fix leaking kitchen sink" className="flex-1 ml-3 text-slate-800" value={title} onChangeText={setTitle} />
+                            <TextInput placeholder="e.g. Fix leaking kitchen sink" className="flex-1 ml-3 text-slate-800" placeholderTextColor="#94a3b8" value={title} onChangeText={setTitle} />
                         </View>
                     </View>
 
@@ -226,7 +226,7 @@ export default function CreateJobScreen({ navigation, route }) {
                     <View className="mb-5">
                         <Text className="text-slate-900 font-bold mb-2 ml-1">Description</Text>
                         <View className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
-                            <TextInput placeholder="Describe the problem..." className="h-28 text-slate-800" multiline textAlignVertical="top" value={description} onChangeText={setDescription} />
+                            <TextInput placeholder="Describe the problem..." className="h-28 text-slate-800" placeholderTextColor="#94a3b8" multiline textAlignVertical="top" value={description} onChangeText={setDescription} />
                         </View>
                     </View>
 
@@ -234,7 +234,7 @@ export default function CreateJobScreen({ navigation, route }) {
                         <View className="flex-1">
                             <Text className="text-slate-900 font-bold mb-2 ml-1">Budget (Rs.)</Text>
                             <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
-                                <TextInput placeholder="5000" className="flex-1 text-slate-800 font-bold" keyboardType="numeric" value={budget} onChangeText={setBudget} />
+                                <TextInput placeholder="5000" className="flex-1 text-slate-800 font-bold" placeholderTextColor="#94a3b8" keyboardType="numeric" value={budget} onChangeText={setBudget} />
                             </View>
                         </View>
                         <View className="flex-1">
@@ -303,6 +303,7 @@ export default function CreateJobScreen({ navigation, route }) {
                             <TextInput
                                 className="flex-1 ml-3 text-slate-800 text-base"
                                 placeholder="Search city or address..."
+                                placeholderTextColor="#94a3b8"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 onSubmitEditing={handleSearch}

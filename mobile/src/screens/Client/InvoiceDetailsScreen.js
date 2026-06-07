@@ -441,13 +441,15 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
                                     <TextInput
                                         value={item.description}
                                         onChangeText={(text) => handleInlineEdit(index, 'description', text)}
+                                        placeholderTextColor="#94a3b8"
                                         className="flex-1 bg-white p-2 rounded-lg border border-slate-200 mr-2 text-slate-700 text-sm"
                                     />
                                     <TextInput
                                         value={item.amount.toString()}
                                         onChangeText={(text) => handleInlineEdit(index, 'amount', text)}
-                                        editable={!item.isFixed} // Disable amount input if fixed
+                                        editable={!item.isFixed}
                                         keyboardType="numeric"
+                                        placeholderTextColor="#94a3b8"
                                         className={`w-24 bg-white p-2 rounded-lg border border-slate-200 text-slate-900 text-right text-sm font-bold ${item.isFixed ? 'bg-slate-100 opacity-50' : ''}`}
                                     />
 
@@ -473,8 +475,8 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
                         <View className="p-4 bg-slate-50 border-t border-slate-200">
                             <Text className="text-xs text-slate-500 font-bold mb-2 uppercase tracking-wider">Add New Row</Text>
                             <View className="flex-row gap-2 mb-2">
-                                <TextInput placeholder="New Item Description" value={editDesc} onChangeText={setEditDesc} className="flex-1 bg-white p-3 rounded-lg border border-slate-200 text-sm" />
-                                <TextInput placeholder="Amount" value={editAmount} onChangeText={setEditAmount} keyboardType="numeric" className="w-24 bg-white p-3 rounded-lg border border-slate-200 text-sm" />
+                                <TextInput placeholder="New Item Description" placeholderTextColor="#94a3b8" value={editDesc} onChangeText={setEditDesc} className="flex-1 bg-white p-3 rounded-lg border border-slate-200 text-sm text-slate-700" />
+                                <TextInput placeholder="Amount" placeholderTextColor="#94a3b8" value={editAmount} onChangeText={setEditAmount} keyboardType="numeric" className="w-24 bg-white p-3 rounded-lg border border-slate-200 text-sm text-slate-700" />
                             </View>
                             <TouchableOpacity onPress={handleAddEditItem} className="bg-slate-900 p-3 rounded-lg items-center">
                                 <Text className="text-white font-bold text-sm">Add Item</Text>
@@ -610,6 +612,7 @@ export default function InvoiceDetailsScreen({ route, navigation }) {
                         <TextInput
                             className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 mb-6 h-24"
                             placeholder="E.g., Amount doesn't match, image is blurry..."
+                            placeholderTextColor="#94a3b8"
                             multiline
                             textAlignVertical="top"
                             value={rejectReason}

@@ -422,8 +422,9 @@ export default function DashboardScreen({ navigation, route }) {
 
                                 <Text style={{ fontWeight: '700', color: '#475569', marginBottom: 8, marginLeft: 4 }}>Full Name</Text>
                                 <TextInput
-                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }}
+                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15, color: '#0f172a' }}
                                     placeholder="Your Name"
+                                    placeholderTextColor="#94a3b8"
                                     value={editName}
                                     onChangeText={setEditName}
                                 />
@@ -451,15 +452,17 @@ export default function DashboardScreen({ navigation, route }) {
                                 </View>
 
                                 <TextInput
-                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }}
+                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15, color: '#0f172a' }}
                                     placeholder="Current Password"
+                                    placeholderTextColor="#94a3b8"
                                     secureTextEntry
                                     value={oldPassword}
                                     onChangeText={setOldPassword}
                                 />
                                 <TextInput
-                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }}
+                                    style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15, color: '#0f172a' }}
                                     placeholder="New Password"
+                                    placeholderTextColor="#94a3b8"
                                     secureTextEntry
                                     value={newPassword}
                                     onChangeText={setNewPassword}
