@@ -96,18 +96,20 @@ export default function CreateInvoiceScreen({ route, navigation }) {
 
                     <TextInput
                         placeholder="E.g. Material cost, Labor fee"
+                        placeholderTextColor="#94a3b8"
                         value={desc}
                         onChangeText={setDesc}
-                        className="bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200"
+                        className="bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200 text-slate-800"
                     />
 
                     <TextInput
                         placeholder="Amount (LKR)"
+                        placeholderTextColor="#94a3b8"
                         value={amount}
                         onChangeText={setAmount}
                         keyboardType="numeric"
                         editable={!isEditingFixedItem}
-                        className={`bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200 ${isEditingFixedItem ? 'opacity-50 bg-slate-100' : ''}`}
+                        className={`bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200 text-slate-800 ${isEditingFixedItem ? 'opacity-50 bg-slate-100' : ''}`}
                     />
                     {isEditingFixedItem && (
                         <Text className="text-xs text-amber-600 mb-3 -mt-2 ml-1 font-medium">
