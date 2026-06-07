@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-    RefreshControl, Alert
+    RefreshControl, Alert, Platform // ✅ Added Platform import
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -50,38 +50,50 @@ export default function MyJobPostsScreen({ navigation, route }) {
         fetchMyJobs();
     };
 
+    // ✅ UPDATED: Platform-aware delete handler
     const handleDelete = async (jobId) => {
         const userToken = await AsyncStorage.getItem('token');
-        Alert.alert(
-            "Delete Job",
-            "Are you sure you want to remove this job post? This cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'Authorization': `Bearer ${userToken}`,
-                                    'Content-Type': 'application/json'
-                                },
-                            });
-                            if (response.ok) {
-                                setJobs(prev => prev.filter(j => j._id !== jobId));
-                                Alert.alert("Success", "Job deleted.");
-                            } else {
-                                Alert.alert("Error", "Failed to delete job.");
-                            }
-                        } catch (error) {
-                            Alert.alert("Error", "Something went wrong.");
-                        }
-                    }
+
+        const executeDelete = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${userToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                });
+                if (response.ok) {
+                    setJobs(prev => prev.filter(j => j._id !== jobId));
+                    if (Platform.OS === 'web') alert("Job deleted.");
+                    else Alert.alert("Success", "Job deleted.");
+                } else {
+                    if (Platform.OS === 'web') alert("Failed to delete job.");
+                    else Alert.alert("Error", "Failed to delete job.");
                 }
-            ]
-        );
+            } catch (error) {
+                if (Platform.OS === 'web') alert("Something went wrong.");
+                else Alert.alert("Error", "Something went wrong.");
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            // Use standard browser confirmation for web
+            const confirmed = window.confirm("Are you sure you want to remove this job post? This cannot be undone.");
+            if (confirmed) {
+                executeDelete();
+            }
+        } else {
+            // Use native Alert for iOS/Android
+            Alert.alert(
+                "Delete Job",
+                "Are you sure you want to remove this job post? This cannot be undone.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: executeDelete }
+                ]
+            );
+        }
     };
 
     const toggleStatus = async (jobId, currentStatus) => {
@@ -99,11 +111,13 @@ export default function MyJobPostsScreen({ navigation, route }) {
             if (response.ok) {
                 setJobs(prev => prev.map(j => j._id === jobId ? { ...j, status: newStatus } : j));
             } else {
-                Alert.alert("Failed", "Could not update status.");
+                if (Platform.OS === 'web') alert("Could not update status.");
+                else Alert.alert("Failed", "Could not update status.");
             }
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Check your internet connection.");
+            if (Platform.OS === 'web') alert("Check your internet connection.");
+            else Alert.alert("Error", "Check your internet connection.");
         }
     };
 
@@ -167,7 +181,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                     </View>
                 </View>
 
-                {/* UPDATED ACTION SECTION */}
                 <View className="flex-col border-t border-gray-50 pt-4">
                     <View className="flex-row gap-2">
                         {isActionable ? (
@@ -187,34 +200,24 @@ export default function MyJobPostsScreen({ navigation, route }) {
                                     </Text>
                                 </TouchableOpacity>
 
-                                {/* CHAT BUTTON */}
                                 <TouchableOpacity
                                     className="w-12 h-12 bg-indigo-50 border border-indigo-100 justify-center items-center rounded-xl"
                                     onPress={async () => {
                                         try {
-                                            console.log("Clicked job:", item);
-                                            console.log("Job ID:", item._id);
-
                                             const token = await AsyncStorage.getItem('token');
-
                                             const res = await fetch(`${API_BASE_URL}/bookings/job/${item._id}`, {
-                                                headers: {
-                                                    Authorization: `Bearer ${token}`
-                                                }
+                                                headers: { Authorization: `Bearer ${token}` }
                                             });
 
                                             const data = await res.json();
 
                                             if (!data.success || !data.booking) {
-                                                console.log("❌ No booking found");
-                                                Alert.alert("No Booking", "This job does not have an active booking.");
+                                                if (Platform.OS === 'web') alert("This job does not have an active booking.");
+                                                else Alert.alert("No Booking", "This job does not have an active booking.");
                                                 return;
                                             }
 
                                             const booking = data.booking;
-
-                                            console.log("✅ Booking ID:", booking._id);
-
                                             navigation.navigate('Chat', {
                                                 bookingId: booking._id,
                                                 receiverName: booking.workerId?.name || "Worker",
@@ -224,7 +227,8 @@ export default function MyJobPostsScreen({ navigation, route }) {
 
                                         } catch (err) {
                                             console.error("🔥 Error:", err);
-                                            Alert.alert("Error", "Failed to open chat.");
+                                            if (Platform.OS === 'web') alert("Failed to open chat.");
+                                            else Alert.alert("Error", "Failed to open chat.");
                                         }
                                     }}
                                 >
@@ -244,7 +248,6 @@ export default function MyJobPostsScreen({ navigation, route }) {
                             </View>
                         )}
 
-                        {/* EDIT & DELETE OPTIONS (only for open/closed jobs) */}
                         {!isAccepted && !isCompleted && !isCancelled && (
                             <>
                                 <TouchableOpacity
@@ -265,27 +268,23 @@ export default function MyJobPostsScreen({ navigation, route }) {
                         )}
                     </View>
 
-                    {/* NEW REVIEW BUTTON (Only shows if Completed) */}
                     {isCompleted && (
                         item.reviewId ? (
-                            // Scenario 2: REVIEW EXISTS -> GREY "Update Review"
                             <TouchableOpacity
                                 className="bg-slate-200 rounded-xl py-2.5 flex-row justify-center items-center mt-3"
                                 onPress={() => navigation.navigate('AddReview', {
                                     editMode: true,
                                     reviewId: item.reviewId
                                 })}
-                                >
+                            >
                                 <MaterialCommunityIcons name="star-outline" size={16} color= "#334155" style={{ marginRight: 6 }}/>
                                 <Text className="text-slate-700 text-xs font-bold">Update Review</Text>
                             </TouchableOpacity>
                         ) : (
-                            // Scenario 1: NO REVIEW -> RED "Add Review"
                             <TouchableOpacity
                                 className="bg-red-600 rounded-xl py-2.5 flex-row justify-center items-center mt-3"
                                 onPress={async () => {
                                     try {
-                                        // 1. Fetch the actual booking connected to this job
                                         const token = await AsyncStorage.getItem('token');
                                         const res = await fetch(`${API_BASE_URL}/bookings/job/${item._id}`, {
                                             headers: { Authorization: `Bearer ${token}` }
@@ -294,13 +293,12 @@ export default function MyJobPostsScreen({ navigation, route }) {
                                         const data = await res.json();
 
                                         if (!data.success || !data.booking) {
-                                            Alert.alert("Error", "Could not find the booking details to review.");
+                                            if (Platform.OS === 'web') alert("Could not find the booking details to review.");
+                                            else Alert.alert("Error", "Could not find the booking details to review.");
                                             return;
                                         }
 
                                         const booking = data.booking;
-
-                                        // 2. Now we have the REAL Object IDs from the DB! Navigate to the form.
                                         navigation.navigate('AddReview', {
                                             editMode: false,
                                             bookingId: booking._id,
@@ -310,7 +308,8 @@ export default function MyJobPostsScreen({ navigation, route }) {
 
                                     } catch (err) {
                                         console.error("Fetch Booking Error:", err);
-                                        Alert.alert("Error", "Failed to load booking data.");
+                                        if (Platform.OS === 'web') alert("Failed to load booking data.");
+                                        else Alert.alert("Error", "Failed to load booking data.");
                                     }
                                 }}
                             >

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, FlatList, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Image, ActivityIndicator,
-    Linking, Alert // Added Alert
+    Linking, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,8 @@ import * as Location from 'expo-location';
 import { io } from "socket.io-client";
 import axios from 'axios';
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:4000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://hirenear-api.onrender.com/api";
+const SOCKET_URL = API_URL.replace('/api', '');
 
 export default function ChatScreen({ route, navigation }) {
     const { bookingId, receiverName, receiverId, userId } = route.params;
@@ -19,7 +20,7 @@ export default function ChatScreen({ route, navigation }) {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(true);
-    const [sendingLocation, setSendingLocation] = useState(false); // New state for location loading
+    const [sendingLocation, setSendingLocation] = useState(false);
     const socket = useRef(null);
     const flatListRef = useRef();
 
@@ -27,11 +28,11 @@ export default function ChatScreen({ route, navigation }) {
         socket.current = io(SOCKET_URL);
         fetchChatHistory();
         socket.current.emit("join_chat", bookingId);
-        socket.current.emit("mark_as_read", { bookingId, userId }); // ✅ mark read on open
+        socket.current.emit("mark_as_read", { bookingId, userId });
 
         socket.current.on("receive_message", (newMessage) => {
             setMessages((prev) => [...prev, newMessage]);
-            socket.current.emit("mark_as_read", { bookingId, userId }); // ✅ mark read on new message
+            socket.current.emit("mark_as_read", { bookingId, userId });
         });
         return () => {
             socket.current.disconnect();
@@ -81,7 +82,7 @@ export default function ChatScreen({ route, navigation }) {
         console.log("📡 Uploading to:", `${SOCKET_URL}/api/messages/upload-image`);
         try {
             let result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],  // ✅ use string array instead
+                mediaTypes: ['images'],
                 allowsEditing: true,
                 quality: 0.7,
             });
@@ -114,7 +115,8 @@ export default function ChatScreen({ route, navigation }) {
             }
         } catch (error) {
             console.error("Image upload failed:", error.response?.data || error.message);
-            Alert.alert("Error", "Failed to send image.");
+            if (Platform.OS === 'web') alert("Failed to send image.");
+            else Alert.alert("Error", "Failed to send image.");
         }
     };
 
@@ -123,15 +125,14 @@ export default function ChatScreen({ route, navigation }) {
             setSendingLocation(true);
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert("Permission Denied", "Location access is required to share your position.");
+                if (Platform.OS === 'web') alert("Location access is required to share your position.");
+                else Alert.alert("Permission Denied", "Location access is required to share your position.");
                 setSendingLocation(false);
                 return;
             }
 
-            // Get last known position first (nearly instant)
             let location = await Location.getLastKnownPositionAsync({});
 
-            // If no last known or it's unavailable, get current with Balanced accuracy (faster)
             if (!location) {
                 location = await Location.getCurrentPositionAsync({
                     accuracy: Location.Accuracy.Balanced,
@@ -148,7 +149,8 @@ export default function ChatScreen({ route, navigation }) {
             });
         } catch (error) {
             console.error("Location Error:", error);
-            Alert.alert("Error", "Could not fetch location. Ensure GPS is enabled.");
+            if (Platform.OS === 'web') alert("Could not fetch location. Ensure GPS is enabled.");
+            else Alert.alert("Error", "Could not fetch location. Ensure GPS is enabled.");
         } finally {
             setSendingLocation(false);
         }
@@ -234,7 +236,6 @@ export default function ChatScreen({ route, navigation }) {
                         <Ionicons name="image-outline" size={26} color="#94a3b8" />
                     </TouchableOpacity>
 
-                    {/* Updated Location Button with Loader */}
                     <TouchableOpacity onPress={sendLocation} className="mr-2 p-2" disabled={sendingLocation}>
                         {sendingLocation ? (
                             <ActivityIndicator size="small" color="#94a3b8" />
