@@ -49,10 +49,10 @@ connectDB();
 
 // --- CORS CONFIGURATION ---
 const allowedOrigins = [
-    'http://localhost:8081',             // Local Expo Web
-    'http://localhost:5173',             // Local Admin Dashboard
-    'https://hirenearadmin.vercel.app',  // Live Admin Dashboard
-    'https://YOUR-APP-NAME.vercel.app'   // ⚠️ REPLACE THIS with your new Vercel App URL!
+    'http://localhost:8081',
+    'http://localhost:5173',
+    'https://hirenearadmin.vercel.app',
+    'https://hirenearmobile.vercel.app/' 
 ];
 
 app.use(cors({
