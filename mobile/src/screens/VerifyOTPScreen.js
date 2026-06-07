@@ -72,8 +72,9 @@ export default function VerifyOTPScreen({ route, navigation }) {
                 )}
 
                 <TextInput
-                    className="bg-slate-100 rounded-2xl py-5 text-center text-3xl font-bold tracking-[20] mb-8"
+                    className="bg-slate-100 rounded-2xl py-5 text-center text-3xl font-bold tracking-[20] mb-8 text-slate-800"
                     placeholder="0000"
+                    placeholderTextColor="#94a3b8"
                     keyboardType="number-pad"
                     maxLength={4}
                     value={otp}

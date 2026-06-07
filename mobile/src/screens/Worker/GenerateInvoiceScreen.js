@@ -189,16 +189,18 @@ export default function GenerateInvoiceScreen({ route, navigation }) {
                     <Text className="font-bold text-slate-800 mb-3">Add Items</Text>
                     <TextInput
                         placeholder="E.g. Pipe replacement parts"
+                        placeholderTextColor="#94a3b8"
                         value={desc}
                         onChangeText={setDesc}
-                        className="bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200"
+                        className="bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200 text-slate-800"
                     />
                     <TextInput
                         placeholder="Amount (LKR)"
+                        placeholderTextColor="#94a3b8"
                         value={amount}
                         onChangeText={setAmount}
                         keyboardType="numeric"
-                        className="bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200"
+                        className="bg-slate-50 p-4 rounded-xl mb-3 border border-slate-200 text-slate-800"
                     />
                     <TouchableOpacity onPress={handleAddItem} className="bg-indigo-600 p-3 rounded-xl items-center shadow-sm">
                         <Text className="text-white font-bold">Add Item</Text>

@@ -628,7 +628,7 @@ export default function WorkerDashboardScreen({ navigation }) {
                                 </View>
 
                                 <Text style={{ fontWeight: '700', color: '#475569', marginBottom: 8, marginLeft: 4 }}>Full Name</Text>
-                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="Your Name" value={editName} onChangeText={setEditName} />
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15, color: '#0f172a' }} placeholder="Your Name" placeholderTextColor="#94a3b8" value={editName} onChangeText={setEditName} />
 
                                 <TouchableOpacity style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 18, alignItems: 'center', opacity: isSubmittingProfile ? 0.7 : 1 }} onPress={handleUpdateProfile} disabled={isSubmittingProfile}>
                                     {isSubmittingProfile ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Save Changes</Text>}
@@ -642,8 +642,8 @@ export default function WorkerDashboardScreen({ navigation }) {
                                     </TouchableOpacity>
                                     <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a' }}>Change Password</Text>
                                 </View>
-                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="Current Password" secureTextEntry value={oldPassword} onChangeText={setOldPassword} />
-                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15 }} placeholder="New Password" secureTextEntry value={newPassword} onChangeText={setNewPassword} />
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15, color: '#0f172a' }} placeholder="Current Password" placeholderTextColor="#94a3b8" secureTextEntry value={oldPassword} onChangeText={setOldPassword} />
+                                <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', fontSize: 15, color: '#0f172a' }} placeholder="New Password" placeholderTextColor="#94a3b8" secureTextEntry value={newPassword} onChangeText={setNewPassword} />
                                 <TouchableOpacity style={{ backgroundColor: '#0f172a', borderRadius: 20, padding: 18, alignItems: 'center', opacity: isSubmittingPassword ? 0.7 : 1 }} onPress={handleChangePassword} disabled={isSubmittingPassword}>
                                     {isSubmittingPassword ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Update Password</Text>}
                                 </TouchableOpacity>

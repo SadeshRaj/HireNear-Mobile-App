@@ -352,8 +352,8 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
                     <ScrollView contentContainerStyle={{ padding: 20 }}>
                         <Text style={{ fontSize: 24, fontWeight: '800', color: '#0f172a', marginBottom: 20 }}>{editingItemId ? 'Edit Project' : 'Add Project'}</Text>
 
-                        <TextInput style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0' }} placeholder="Project Title" value={title} onChangeText={setTitle} />
-                        <TextInput style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', height: 100, textAlignVertical: 'top' }} placeholder="Description..." multiline value={description} onChangeText={setDescription} />
+                        <TextInput style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', color: '#0f172a' }} placeholder="Project Title" placeholderTextColor="#94a3b8" value={title} onChangeText={setTitle} />
+                        <TextInput style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', height: 100, textAlignVertical: 'top', color: '#0f172a' }} placeholder="Description..." placeholderTextColor="#94a3b8" multiline value={description} onChangeText={setDescription} />
 
                         <TouchableOpacity
                             onPress={openMapModal}
@@ -582,7 +582,7 @@ export default function WorkerPortfolioScreen({ route, navigation }) {
                             ))}
                         </View>
                         <Text style={{ fontWeight: '700', color: '#475569', marginBottom: 8 }}>About Me</Text>
-                        <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, height: 100, textAlignVertical: 'top', marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0' }} multiline value={editBio} onChangeText={setEditBio} />
+                        <TextInput style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, height: 100, textAlignVertical: 'top', marginBottom: 24, borderWidth: 1, borderColor: '#e2e8f0', color: '#0f172a' }} placeholder="Tell clients about yourself..." placeholderTextColor="#94a3b8" multiline value={editBio} onChangeText={setEditBio} />
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                             <TouchableOpacity style={{ flex: 1, padding: 16, borderRadius: 20, backgroundColor: '#f1f5f9', alignItems: 'center' }} onPress={() => setProfileModalVisible(false)}>
                                 <Text style={{ fontWeight: '700', color: '#475569' }}>Cancel</Text>

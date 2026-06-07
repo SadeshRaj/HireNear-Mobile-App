@@ -247,6 +247,7 @@ export default function ChatScreen({ route, navigation }) {
                         <TextInput
                             className="flex-1 text-slate-800 py-1 text-base"
                             placeholder="Type a message..."
+                            placeholderTextColor="#94a3b8"
                             value={inputText}
                             onChangeText={setInputText}
                             multiline
