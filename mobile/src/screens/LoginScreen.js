@@ -65,7 +65,7 @@ export default function LoginScreen({ navigation }) {
             }
         } catch (error) {
             console.error('Login Error:', error);
-            setError('Network error. Make sure the server is running.');
+            setError('Server is starting. Please try again in 20 Seconds.');
         } finally {
             setLoading(false);
         }
