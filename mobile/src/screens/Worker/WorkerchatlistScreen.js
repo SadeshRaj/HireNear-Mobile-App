@@ -7,8 +7,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000/api";
-const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || "http://localhost:4000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://hirenear-api.onrender.com/api";
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || "https://hirenear-api.onrender.com/api";
 
 const socket = io(SOCKET_URL);
 
