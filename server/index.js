@@ -47,8 +47,27 @@ cloudinary.config({
 // Connect to MongoDB
 connectDB();
 
+// --- CORS CONFIGURATION ---
+const allowedOrigins = [
+    'http://localhost:8081',             // Local Expo Web
+    'http://localhost:5173',             // Local Admin Dashboard
+    'https://hirenearadmin.vercel.app',  // Live Admin Dashboard
+    'https://YOUR-APP-NAME.vercel.app'   // ⚠️ REPLACE THIS with your new Vercel App URL!
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile devices) OR explicitly whitelisted web domains
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

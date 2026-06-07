@@ -8,7 +8,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
-import ImageView from "react-native-image-viewing";
+import ImageView from '../../components/ImageViewer';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 

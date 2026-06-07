@@ -1,12 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import {
-    View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert
+    View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ImageView from "react-native-image-viewing";
 import { useFocusEffect } from '@react-navigation/native';
+
+// Import our new platform-agnostic wrapper
+import ImageView from '../../components/ImageViewer';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const STATUS_STEPS = ['pending', 'scheduled', 'in-progress', 'completed'];
@@ -22,6 +24,10 @@ export default function BookingDetailsScreen({ route, navigation }) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     const openImageViewer = (images, index) => {
+        if (Platform.OS === 'web') {
+            Alert.alert("Notice", "Full-screen image viewing is not supported on the web version.");
+            return;
+        }
         setCurrentImages(images.map(uri => ({ uri })));
         setCurrentIndex(index);
         setVisible(true);
@@ -147,7 +153,7 @@ export default function BookingDetailsScreen({ route, navigation }) {
                                 <Text className="text-slate-900 font-bold text-base">{booking.workerId.name}</Text>
                             </View>
                         </View>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => navigation.navigate('WorkerPortfolio', { workerId: booking.workerId._id })}
                             className="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100"
                         >

@@ -8,7 +8,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker } from '../../components/MapWrapper';
 import { API_BASE_URL } from '../../../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

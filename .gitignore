@@ -71,3 +71,4 @@ coverage/
 logs/
 *.log
 server/uploads/
+mobile/eas.json
