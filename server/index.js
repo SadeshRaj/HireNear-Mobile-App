@@ -52,7 +52,7 @@ const allowedOrigins = [
     'http://localhost:8081',
     'http://localhost:5173',
     'https://hirenearadmin.vercel.app',
-    'https://hirenearmobile.vercel.app/' 
+    'https://hirenearmobile.vercel.app'
 ];
 
 app.use(cors({
